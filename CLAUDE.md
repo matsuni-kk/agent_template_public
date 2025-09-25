@@ -51,7 +51,7 @@ agent_creation_workflow:
       - order: 4
         name: "Continuous Improvement"
         purpose: "ユーザーの選択に応じてブラッシュアップを継続するか、`output/` 配下のエージェントフォルダ単体をプライベートGitリポジトリ化して運用移行する。"
-    final_adjustment_note: ".cursor/rules/ で最終調整を行い、Flow→Stock移行を準備する。"
+    final_adjustment_note: ".cursor/rules/ で最終調整を行い、Flow→Stock移行を準備する。Flow / Stock / Archived 以外の構成が必要な場合は、この段階でディレクトリと `{domain}_paths.mdc` の同期を確認し、合意した階層に揃える。"
   scenarios:
     - id: "scenario_a"
       condition: "作りたいエージェントが明確"
@@ -61,6 +61,7 @@ agent_creation_workflow:
           tasks:
             - "scripts/enhanced_generate_agent.py の引数（--agent-name, --domain, --description）を確定する。"
             - "output/{agent_name}_agent/ が既存プロジェクトと競合しないことを確認する。"
+            - "Flow / Stock / Archived を初期構成として案内し、この階層で作り始めてよいかユーザーに確認する。別構成案があればこの時点で整理する。"
         - order: 2
           name: "スケルトン生成"
           command:
@@ -76,6 +77,7 @@ agent_creation_workflow:
             - "{domain}_paths.mdc の root/dirs/patterns をエージェント固有のディレクトリ構造に合わせて整備する。"
             - "00_master_rules.mdc を初期化し、説明・見出し・globs・ai_instructions・master_triggers をドメイン仕様に合わせて書き換える（テンプレコメントやサンプルトリガーは全て除去する）。"
             - "97_flow_to_stock_rules.mdc / 98_flow_assist.mdc / 99_rule_maintenance.mdc を対象エージェントのパス・質問・運用プロセスで上書きする。"
+            - "初期の Flow / Stock / Archived 構成で問題ないかユーザーに再確認し、調整が必要なら階層と `{domain}_paths.mdc` を更新する。"
     - id: "scenario_b"
       condition: "作りたいエージェントが未確定"
       steps:
@@ -178,6 +180,8 @@ agent_creation_workflow:
 │   └── templates/            # ドキュメントテンプレート
 ├── scripts/                   # 自動化スクリプト
 └── README.md                  # エージェント専用説明書
+
+標準で Flow（ドラフト作業）→Stock（確定版）→Archived（履歴保存）の三層を採用するのは、業務プロセスの「案出し→レビュー→確定→保管」という流れを想定しているためです。ユーザーとの要件定義で異なる文書管理フローが求められた場合は、この構成と `{domain}_paths.mdc` のパターン定義をあわせて調整し、希望する階層へ置き換えてください。
 
 
 # =========================
