@@ -1,0 +1,112 @@
+{
+  "env": {
+    "BASH_MAX_TIMEOUT_MS": "900000",
+    "BASH_DEFAULT_TIMEOUT_MS": "600000"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(mkdir:*)",
+      "Bash(rm:*)",
+      "Bash(ls:*)",
+      "Bash(/usr/bin/python3:*)",
+      "WebFetch(domain:www.ama.org)",
+      "Bash(chmod:*)",
+      "Bash(find:*)",
+      "Bash(rg:*)",
+      "Bash(grep:*)",
+      "Bash(cp:*)",
+      "Bash(git init:*)",
+      "Bash(git commit:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git clone:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:docs.dify.ai)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:dify101.com)",
+      "WebFetch(domain:jgraph.github.io)",
+      "WebFetch(domain:codepen.io)",
+      "Bash(true)",
+      "Bash(git -C /Users/matuni__/Desktop/relationship-analysis-agent add .)",
+      "Bash(git -C /Users/matuni__/Desktop/relationship-analysis-agent add Flow/Public/2025-01-24/draft_conversation_analysis.md Stock/character_profiles/*.md Stock/relationship_network/relationship_map.md)",
+      "Bash(tree:*)",
+      "Bash(mv:*)",
+      "Bash(git branch:*)",
+      "Bash(git remote add:*)",
+      "Bash(gh auth:*)",
+      "Bash(awk:*)",
+      "Bash(curl:*)",
+      "Bash(for i in {02..06})",
+      "Bash(do echo \"Updating rule file $i...\")",
+      "Bash(done)",
+      "Bash(git remote set-url:*)",
+      "Bash(gh repo view:*)",
+      "Bash(git remote:*)",
+      "Bash(gh repo clone:*)"
+    ],
+    "deny": [
+      "Bash(git config *)",
+      "Bash(brew install *)",
+      "Bash(chmod 777 *)",
+      "Bash(rm -rf /*)",
+      "Bash(gh repo delete:*)",
+      "Bash(:(){ :|:& };:)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/matuni__/Desktop/agent_template/.claude/hooks/deny-check.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay /System/Library/Sounds/Glass.aiff"
+          },
+          {
+            "type": "command",
+            "command": "terminal-notifier -message \"Claude Code の処理が完了しました\" -title \"Claude Code\" -subtitle \"All tasks finished\""
+          },
+          {
+            "type": "command",
+            "command": "/Users/matuni__/Desktop/agent_template/.claude/hooks/dynamic_voice_stop.sh"
+          },
+          {
+            "type": "command",
+            "command": "/Users/matuni__/Desktop/agent_template/.claude/hooks/hook_stop_words.sh"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay /System/Library/Sounds/Submarine.aiff"
+          },
+          {
+            "type": "command",
+            "command": "terminal-notifier -message \"Claudeが確認を求めています\" -title \"Claude Code\" -subtitle \"Confirmation required\""
+          },
+          {
+            "type": "command",
+            "command": "/Users/matuni__/Desktop/agent_template/.claude/hooks/voice_notification.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

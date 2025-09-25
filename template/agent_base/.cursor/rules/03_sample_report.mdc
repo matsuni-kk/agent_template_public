@@ -1,0 +1,21 @@
+---
+description: サンプル03 - 簡易レポート生成
+globs:
+---
+
+# ==========================================================
+# XX_XXX.mdc - XXX
+# ==========================================================
+
+path_reference: "agent_paths.mdc"
+
+report_questions:
+  - category: "レポート情報"
+    items:
+      - question: "作業内容は？"
+        key: "report_content"
+        required: true
+
+report_template: |
+  # レポート
+  内容: {{report_content}}

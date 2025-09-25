@@ -1,0 +1,22 @@
+---
+description: サンプル01 - 基本情報収集
+globs:
+---
+
+# ==========================================================
+# XX_XXX.mdc - XXX
+# ==========================================================
+
+path_reference: "agent_paths.mdc"
+
+sample_questions:
+  - category: "基本情報"
+    items:
+      - question: "プロジェクト名は？"
+        key: "project_name"
+        default: "{{meta.project_id}}"
+        required: true
+
+sample_template: |
+  # サンプルドキュメント
+  プロジェクト: {{project_name}}

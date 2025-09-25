@@ -1,0 +1,199 @@
+---
+description: "Template Agent Master Control Rules - エージェント派生の統一基盤"
+globs:
+---
+# 00_master_rules.mdc
+
+<!-- USAGE: このテンプレートから派生agentを生成時は、以下を必ず実行：
+1. agent_paths.mdc のTemplate部分を置換
+2. master_triggersセクションを対象ドメイン用に調整
+3. 01-89番台ルールを作成・参照追加
+-->
+
+# ==========================================================
+# 00_XXX.mdc - XXX マスタールール
+# ==========================================================
+
+
+path_reference: "agent_paths.mdc"
+# =========================
+# AI注意事項 - AIが確実に守るべき指示
+# =========================
+ai_instructions:
+  - "すべてのルールは正確に実行し、独自の解釈で変更しないこと"
+  - "execute_shellアクションのコマンドは一切変更せずそのまま実行すること"
+  - "指定されたファイルパスやフォルダ構造を尊重し、勝手に構造を変更しないこと"
+  - "失敗した場合でも代替手段を取らず、失敗を報告してユーザーの指示を仰ぐこと"
+
+<!-- YAML記述例:
+# 00_master_rules_sample_babok.mdc が完成系のサンプルの一つです
+# すべてのやり取りは message フィールドを用いたメッセージ形式で行います
+master_triggers:
+  - trigger: "(例: 新規タスク)"
+    priority: high
+    mode: "exclusive"
+    steps:
+      - name: "step1"
+        action: "notify"
+        message: "処理内容"
+      - name: "confirm_step1"
+        action: "confirm"
+        message: "上記の処理を実行します。よろしいですか？"
+-->
+master_triggers:
+# =========================
+  # 00. Agent Initialization Phase
+# =========================
+  - trigger: "(Templateプロジェクト開始|Template初期化|新規Templateプロジェクト)"
+    priority: high
+    description: "エージェント初期化とプロジェクト構造作成"
+    steps:
+      - name: "start_info_collection"
+        action: "call 01_template_initialization.mdc => initialization_questions"
+        message: "Template初期化に必要な情報を収集します。以下の質問に回答してください。"
+      - name: "wait_user_responses"
+        action: "wait_for_all_answers"
+        message: "必要な回答が揃うまで先に進みません。"
+      - name: "confirm_project_creation"
+        action: "confirm"
+        message: "以下の内容でTemplateプロジェクトを初期化します：\n\nプロジェクト: {{project_id}}\n\nよろしいですか？"
+      - name: "create_project_structure"
+        action: "execute_shell"
+        command: "mkdir -p {{patterns.project_dir}}"
+        message: "プロジェクト構造を作成します..."
+      - name: "create_readme"
+        action: "create_markdown_file"
+        path: "{{patterns.project_readme}}"
+        template_reference: "01_template_initialization.mdc => project_readme_template"
+        message: "プロジェクトREADMEを作成します..."
+      - name: "notify_completion"
+        action: "notify"
+        message: |
+          ✅ Templateプロジェクト「{{project_id}}」の初期化が完了しました。
+          
+          次のステップとしてtemplate固有の作業を開始してください。
+
+# =========================
+  # 1–N. Domain Rules (01–89)
+# =========================
+  # 派生時に対象ドメインの専用ルールを01-89番で定義
+# =========================
+  # 90. Task Management (Standard across all agents)
+# =========================
+  - trigger: "(今日のタスク作成|日次タスクTemplate)"
+    priority: medium
+    steps:
+      - name: "create_flow_today_dir"
+        action: "execute_shell"
+        command: "mkdir -p {{patterns.flow_public_date}}"
+        message: "今日のFlowディレクトリを作成します..."
+      - name: "create_daily_tasks"
+        action: "create_markdown_file"
+        path: "{{patterns.daily_tasks_md}}"
+        template_reference: "90_task_management.mdc => daily_tasks_template"
+        message: "今日の日次タスクファイルを作成しました: {{patterns.daily_tasks_md}}"
+      - name: "notify_daily_tasks_creation"
+        action: "notify"
+        message: "✅ 日次タスクファイルが {{patterns.daily_tasks_md}} に作成されました。"
+
+# =========================
+  # 98. Flow Assist (Interactive support)
+# =========================
+  - trigger: "(アイディア発散Template|Templateブレスト|ヒューリスティック思考Template)"
+    priority: medium
+    steps:
+      - name: "create_flow_private_today_dir"
+        action: "execute_shell"
+        command: "mkdir -p {{patterns.flow_private_date}}"
+        message: "Private Flowディレクトリを作成します..."
+      - name: "ask_brainstorm_questions"
+        action: "call 98_flow_assist.mdc => brainstorm_questions"
+        message: "アイデア発散セッションを開始します。テーマなどを教えてください。"
+      - name: "wait_brainstorm_answers"
+        action: "wait_for_all_answers"
+      - name: "create_brainstorm_notes"
+        action: "create_markdown_file"
+        path: "{{patterns.brainstorm_notes_md}}"
+        template_reference: "98_flow_assist.mdc => brainstorm_template"
+        message: "アイデア発散ノートを作成しました: {{patterns.brainstorm_notes_md}}"
+      - name: "notify_brainstorm_creation"
+        action: "notify"
+        message: "✅ アイデア発散ノートが {{patterns.brainstorm_notes_md}} に作成されました。"
+# =========================
+  # 99. Rule Maintenance & System Management
+# =========================
+  - trigger: "(ルールチェック|RuleLint|ルール診断|Template構造検証)"
+    priority: medium
+    steps:
+      - name: "perform_rule_lint"
+        action: "call 99_rule_maintenance.mdc => rule_check"
+        message: "ルール整合性チェックとTemplate構造検証を実行しています..."
+      - name: "notify_rule_check_completion"
+        action: "notify"
+        message: |
+          ✅ ルール整合性チェックが完了しました。
+          エラーや警告がある場合は結果を確認してください。
+
+  - trigger: "(ルール追加|ルール編集|ルール更新|rule maintenance|ルールメンテ)"
+    priority: high
+    steps:
+      - name: "start_message"
+        action: "notify"
+        message: "**ルール保守を開始します。** 追加・編集いずれも標準フォーマットを厳守します。"
+      - name: "collect_info"
+        action: "call 99_rule_maintenance.mdc => rule_maintenance_questions"
+        message: "必要事項を入力してください。"
+      - name: "create_log"
+        action: "create_markdown_file"
+        path: "{{patterns.rule_maintenance_log}}"
+        template_reference: "99_rule_maintenance.mdc => rule_maintenance_log_template"
+        message: "変更ログを作成しました。"
+      - name: "maybe_create_rule_skeleton"
+        action: "conditional_step"
+        condition: "{{operation}} == 'add'"
+        true_action: "create_markdown_file: path='{{patterns.rule_skeleton_out}}' template_reference='99_rule_maintenance.mdc => rule_skeleton_template'"
+        false_action: "notify: '編集モード: スケルトン作成はスキップしました'"
+      - name: "completion_message"
+        action: "notify"
+        message: "**ルール保守を完了しました。**\nログ: {{patterns.rule_maintenance_log}}\n新規/編集対象は .cursor/rules を確認してください。"
+
+# ==========================================================
+# =========================
+# Agent Derivation Instructions
+# =========================
+# ==========================================================
+
+## LLM-Driven Agent Generation Guidelines
+
+### 1. Template Variable Replacement
+```yaml
+Template     : 派生先エージェント名 (e.g., "BABOK", "Knowledge")
+template         : ドメイン名 (e.g., "babok", "knowledge") 
+{{specialized_rules}}: 01-89番台の専門ルール番号リスト
+```
+
+### 2. Rule Numbering Convention
+- **00**: Master control rules (このファイル)
+- **01-89**: Domain-specific specialized rules
+- **90**: Task management (標準化済み)
+- **97**: Flow to Stock rules (標準化済み)
+- **98**: Flow assist / brainstorming
+- **99**: Rule maintenance & system management
+
+### 3. Standard Directory Structure
+```
+{agent_name}_agent/
+├── Flow/           # 作業中ドラフト
+├── Stock/          # 確定版ドキュメント  
+├── Archived/       # アーカイブ
+├── cursor_bank/    # ルールファイル群
+└── scripts/        # 自動化スクリプト
+```
+
+### 4. Mandatory Files for Derived Agents
+- `00_master_rules.mdc` (このテンプレートベース)
+- `{domain}_paths.mdc` (パス定義)
+- `90_task_management.mdc` (タスク管理)
+- `97_flow_to_stock_rules.mdc` (Flow→Stock移動)
+- `98_flow_assist.mdc` (対話支援)
+- `99_rule_maintenance.mdc` (ルール保守)
