@@ -47,7 +47,10 @@ agent_creation_workflow:
         purpose: "スクリプトとテンプレートを用いてルール・パス・ドラフトを整備する。"
       - order: 3
         name: "Feedback"
-        purpose: "評価レポートと改善タスクを更新し、必要に応じてルールを再調整する。"
+        purpose: "評価レポートと改善タスクを更新し、必要に応じてルールを再調整する。完了時にはブラッシュアップ継続か生成フォルダ単体のプライベートGit運用かをユーザーに確認する。"
+      - order: 4
+        name: "Continuous Improvement"
+        purpose: "ユーザーの選択に応じてブラッシュアップを継続するか、`output/` 配下のエージェントフォルダ単体をプライベートGitリポジトリ化して運用移行する。"
     final_adjustment_note: ".cursor/rules/ で最終調整を行い、Flow→Stock移行を準備する。"
   scenarios:
     - id: "scenario_a"
@@ -116,6 +119,12 @@ agent_creation_workflow:
         tasks:
           - "00_master_rules.mdc と該当する NN_{domain}_{function}.mdc を改訂し、変更理由と反映日を記録する。"
           - "Flow→Stock ルール（97番台）を用いて確定ドキュメントへ移行し、97/98/99番台の内容がエージェント固有の要件と整合するか確認する。"
+      - id: "post_completion_decision"
+        name: "完了後の運用方針確認"
+        tasks:
+          - "ユーザーに、再対話によるブラッシュアップ継続か `output/` 配下に生成されたエージェントフォルダ（例: `output/movie_agent/`）のみを用いたプライベートGitリポジトリ作成のどちらを希望するか確認する。"
+          - "ブラッシュアップを選択した場合は対話を続け、反映内容を Flow 側ドラフトに落とし込む。"
+          - "プライベートリポジトリを選択した場合は対象フォルダのみを新規リポジトリとして初期化し、リモートをプライベート設定で作成・push する。"
   master_trigger_registration:
     guidelines:
       - "トリガーは # ========================= / 1–N. Domain Rules (01–89) / ========================= 配下に追加する。"
@@ -185,9 +194,6 @@ architecture:
       - range: "01-89"
         label: "Domain Specialized Rules"
         description: "各ドメインエリアのルール"
-      - range: "90"
-        label: "Task Management"
-        description: "標準タスク管理"
       - range: "97"
         label: "Flow to Stock Rules"
         description: "ドキュメント確定・移行"
@@ -225,7 +231,7 @@ quick_reference:
         - "評価レポート"
     - order: 4
       name: "Phase 4: 継続改善"
-      focus: "レビュー専用ルールで改善サイクルを運用し、Flow→Stock の証跡と改善バックログを残す。"
+      focus: "レビュー専用ルールで改善サイクルを運用し、Flow→Stock の証跡と改善バックログを残す。ユーザーと協議し、ブラッシュアップ継続か生成フォルダ単体のプライベートGit運用かを決定する。"
       deliverables:
         - "レビュー報告"
         - "改善タスクリスト"
@@ -1015,7 +1021,6 @@ post_generation_workflow:
       numbering:
         - "00: Master Control Rules"
         - "01〜89: Domain Specialized Rules"
-        - "90: Task Management"
         - "97: Flow to Stock Rules"
         - "98: Flow Assist"
         - "99: Rule Maintenance"
