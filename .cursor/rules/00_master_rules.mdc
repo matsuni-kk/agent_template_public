@@ -40,10 +40,10 @@ design_principles:
 agent_creation_tasks:
   description: "ヒアリング結果に応じてAgent作成工程全てを管理する進捗タスクリスト。ユーザーと共有し、必要に応じて項目を追加・削除する。Cursorなどのタスク機能がある場合はそちらを利用する。"
   default_items:
-    - id: "confirm_initial_structure"
-      detail: "Flow / Stock / Archived を初期構成として説明し、ユーザーの承認を得る。"
     - id: "collect_requirements"
       detail: "ヒアリングで得た要件を {{patterns.draft_requirements}} に整理する。"
+    - id: "confirm_initial_structure"
+      detail: "Flow / Stock / Archived を初期構成として説明し、要件に沿ったフォルダ設計として承認を得る。"
     - id: "directory_alignment"
       detail: "ディレクトリ構成と {domain}_paths.mdc の整合を確認・調整する。"
     - id: "rule_customization"
@@ -77,7 +77,7 @@ agent_creation_workflow:
           tasks:
             - "scripts/enhanced_generate_agent.py の引数（--agent-name, --domain, --description）を確定する。"
             - "output/{agent_name}_agent/ が既存プロジェクトと競合しないことを確認する。"
-            - "Flow / Stock / Archived を初期構成として案内し、この構成で要件定義とフォルダ設計を並行して進めてよいかユーザーに確認する。別構成案があれば要件整理とともにタスクリストへ登録する。"
+            - "Flow / Stock / Archived を初期構成として案内し、この構成でドキュメント管理を進めてよいかユーザーに確認する。別構成案があればその要件を整理しタスクリストへ登録する。"
         - order: 2
           name: "スケルトン生成"
           command:
@@ -92,6 +92,8 @@ agent_creation_workflow:
             - "template_paths.mdc を削除して参照衝突を防ぐ。"
             - "要件定義で合意したフォルダ構成に基づき、{domain}_paths.mdc の root/dirs/patterns を整備する。"
             - "00_master_rules.mdc を初期化し、説明・見出し・globs・ai_instructions・master_triggers をドメイン仕様に合わせて書き換える（テンプレコメントやサンプルトリガーは全て除去する）。"
+            - "01_initialization ルールをプロジェクト初期化（ディレクトリ生成・初期ドキュメント作成・TODO登録）に対応させる。"
+            - "02番以降のルールは初期化完了後に要件へ沿って順次設計・実装する計画を立て、タスクリストへ反映する。"
       - "master_triggers を含むマスタールール全体の整形・不要トリガー削除・番号整合を完了させてから次工程に進む。"
             - "97_flow_to_stock_rules.mdc / 98_flow_assist.mdc / 99_rule_maintenance.mdc を対象エージェントのパス・質問・運用プロセスで上書きする。"
             - "テンプレートに同梱されているサンプルルール（01_sample_*.mdc 等）が残っている場合は、このタイミングで削除する。"
@@ -102,7 +104,7 @@ agent_creation_workflow:
         - order: 1
           name: "ヒアリング準備"
           tasks:
-            - "{{patterns.flow_private_date}}/agent_discovery_brief.md を作成し、課題・対象ユーザー・期待成果を整理する。"
+            - "{{patterns.flow_day_dir}}/agent_discovery_brief.md を作成し、課題・対象ユーザー・期待成果を整理する。"
             - "既存資料があれば gather_existing_info を実行し、参照元リンクと取得日時を記録する。"
         - order: 2
           name: "要件定義セッション"
@@ -237,6 +239,7 @@ architecture:
         label: "Rule Maintenance"
         description: "システム管理"
     note: |-
+      01番ルールはプロジェクト初期化（PMBOKの立上げプロセスに相当）を担い、Flow/Stock/Archived の基礎ディレクトリと初期ドキュメントを整備する。
       97/98/99番台はテンプレ共通ひな型のため、各エージェント固有のドラフト/Stockパスや手順に置き換える。あわせて 00_master_rules.mdc と {domain}_paths.mdc もテンプレ初期状態のまま残さず、ヘッダー・description・globs・ai_instructions・master_triggers・パターン定義をドメイン仕様に揃える（テンプレコメントや汎用トリガーは全て削除、Flow→Stock や Task Management の処理は専用ルール側で扱う）。
 
 
