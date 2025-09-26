@@ -4,16 +4,9 @@ globs:
 ---
 # 00_master_rules.mdc
 
-<!-- USAGE: このテンプレートから派生agentを生成時は、以下を必ず実行：
-1. agent_paths.mdc のTemplate部分を置換
-2. master_triggersセクションを対象ドメイン用に調整
-3. 01-89番台ルールを作成・参照追加
--->
-
 # ==========================================================
 # 00_XXX.mdc - XXX マスタールール
 # ==========================================================
-
 
 path_reference: "agent_paths.mdc"
 # =========================
@@ -25,21 +18,6 @@ ai_instructions:
   - "指定されたファイルパスやフォルダ構造を尊重し、勝手に構造を変更しないこと"
   - "失敗した場合でも代替手段を取らず、失敗を報告してユーザーの指示を仰ぐこと"
 
-<!-- YAML記述例:
-# 00_master_rules_sample_babok.mdc が完成系のサンプルの一つです
-# すべてのやり取りは message フィールドを用いたメッセージ形式で行います
-master_triggers:
-  - trigger: "(例: 新規タスク)"
-    priority: high
-    mode: "exclusive"
-    steps:
-      - name: "step1"
-        action: "notify"
-        message: "処理内容"
-      - name: "confirm_step1"
-        action: "confirm"
-        message: "上記の処理を実行します。よろしいですか？"
--->
 master_triggers:
 # =========================
   # 00. Agent Initialization Phase

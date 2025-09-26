@@ -90,6 +90,7 @@ agent_creation_workflow:
             - "template_paths.mdc を削除して参照衝突を防ぐ。"
             - "要件定義で合意したフォルダ構成に基づき、{domain}_paths.mdc の root/dirs/patterns を整備する。"
             - "00_master_rules.mdc を初期化し、説明・見出し・globs・ai_instructions・master_triggers をドメイン仕様に合わせて書き換える（テンプレコメントやサンプルトリガーは全て除去する）。"
+      - "master_triggers を含むマスタールール全体の整形・不要トリガー削除・番号整合を完了させてから次工程に進む。"
             - "97_flow_to_stock_rules.mdc / 98_flow_assist.mdc / 99_rule_maintenance.mdc を対象エージェントのパス・質問・運用プロセスで上書きする。"
             - "初期の Flow / Stock / Archived 構成で問題ないかユーザーに再確認し、調整が必要なら階層と `{domain}_paths.mdc` を更新し、タスクリストの進捗を完了にする。"
     - id: "scenario_b"
@@ -112,7 +113,7 @@ agent_creation_workflow:
           tasks:
             - "{{patterns.draft_requirements}} に要件をまとめる。"
             - "必要に応じて {{patterns.draft_project_plan}} を作成する。"
-            - "トリガー名称・テンプレート構造・主要ステップ案を整理し、コメントは Flow/Private に残す。"
+            - "トリガー名称・テンプレート構造・主要ステップ案を整理し、コメントは {{patterns.flow_public_date}} に残す。"
         - order: 4
           name: "ビルド準備完了判定"
           tasks:
@@ -134,13 +135,13 @@ agent_creation_workflow:
       - id: "evaluation_report"
         name: "評価レポート作成"
         tasks:
-          - "Flow/Public に evaluation_report_{{meta.today}}.md を作成し、Syntax・Functional・Goal・Utility の観点で評価する。"
+          - "{{patterns.flow_public_date}}/evaluation_report_{{meta.today}}.md を作成し、Syntax・Functional・Goal・Utility の観点で評価する。"
           - "判定根拠と改善点を出典・日時・担当者付きで記録する。"
       - id: "improvement_tasks"
         name: "改善タスク管理"
         tasks:
           - "{{patterns.backlog_root}} 等の管理票に改善タスクを登録し、完了条件と期限を明示する。"
-          - "再発する課題は Flow/Private 側に原因分析メモを残す。"
+          - "再発する課題は Flow の該当日付ディレクトリに原因分析メモを残す。"
       - id: "rule_update"
         name: "ルール更新と再配布"
         tasks:
@@ -189,9 +190,9 @@ agent_creation_workflow:
 
 
 {domain}_agent/
-├── Flow/                      # 作業中ドラフト
-│   ├── Public/               # 公開可能な作業ファイル  
-│   └── Private/              # 非公開作業ファイル
+├── Flow/                      # 作業中ドラフト（日付階層で整理）
+│   └── YYYYMM/               # 月単位ディレクトリ
+│       └── YYYYMMDD/         # 日別ドラフト格納先
 ├── Stock/                     # 確定版ドキュメント
 │   └── programs/             # プログラム/プロジェクト構造
 │       └── {program}/projects/{project}/documents/
@@ -316,7 +317,7 @@ available_actions:
     schema:
       action: "execute_shell"
       parameters:
-        command: "mkdir -p Stock/documents Flow/Public Flow/Private"
+        command: "mkdir -p Stock/documents Flow/_template/YYYYMMDD"
     usage_note: "外部コマンドを実行し、環境やファイルを整備する。"
   - name: "create_directory"
     schema:
@@ -847,7 +848,7 @@ post_generation_workflow:
             action: "call 01_{domain}_initialization.mdc => project_init_questions"
           - name: "create_project_structure"
             action: "execute_shell"
-            command: "mkdir -p Stock/documents Flow/Public Flow/Private"
+            command: "mkdir -p Stock/documents Flow/_template/YYYYMMDD"
           - name: "create_readme"
             action: "create_markdown_file"
             path: "README.md"
@@ -1050,7 +1051,7 @@ post_generation_workflow:
         - "{{patterns.xxx}} 形式の正確な使用"
       flow_stock:
         - "Flow → Stock の文書管理フローを考慮"
-        - "Public/Private ディレクトリの適切な使い分け"
+        - "Flow の日付階層ディレクトリの運用ルール遵守"
         - "Archived による履歴管理"
       numbering:
         - "00: Master Control Rules"
