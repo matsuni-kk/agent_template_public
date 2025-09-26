@@ -47,6 +47,8 @@ agent_creation_tasks:
       detail: "ディレクトリ構成と {domain}_paths.mdc の整合を確認・調整する。"
     - id: "rule_customization"
       detail: "00/01-99 のルールをドメイン仕様に合わせて更新する。"
+    - id: "cleanup_sample_rules"
+      detail: "テンプレートコピー後に残ったサンプルルールファイル（01_sample_*.mdc など）を削除する。"
     - id: "post_completion_choice"
       detail: "ブラッシュアップ継続か、生成フォルダ単体のプライベートGit化かを確認する。"
 agent_creation_workflow:
@@ -91,6 +93,7 @@ agent_creation_workflow:
             - "00_master_rules.mdc を初期化し、説明・見出し・globs・ai_instructions・master_triggers をドメイン仕様に合わせて書き換える（テンプレコメントやサンプルトリガーは全て除去する）。"
       - "master_triggers を含むマスタールール全体の整形・不要トリガー削除・番号整合を完了させてから次工程に進む。"
             - "97_flow_to_stock_rules.mdc / 98_flow_assist.mdc / 99_rule_maintenance.mdc を対象エージェントのパス・質問・運用プロセスで上書きする。"
+            - "テンプレートに同梱されているサンプルルール（01_sample_*.mdc 等）が残っている場合は、このタイミングで削除する。"
             - "初期の Flow / Stock / Archived 構成で問題ないかユーザーに再確認し、調整が必要なら階層と `{domain}_paths.mdc` を更新し、タスクリストの進捗を完了にする。"
     - id: "scenario_b"
       condition: "作りたいエージェントが未確定"
