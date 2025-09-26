@@ -36,6 +36,19 @@ design_principles:
 # エージェント作成ワークフロー
 # =========================
 
+agent_creation_tasks:
+  description: "ヒアリング結果に応じてAgent作成工程全てを管理する進捗タスクリスト。ユーザーと共有し、必要に応じて項目を追加・削除する。Cursorなどのタスク機能がある場合はそちらを利用する。"
+  default_items:
+    - id: "confirm_initial_structure"
+      detail: "Flow / Stock / Archived を初期構成として説明し、ユーザーの承認を得る。"
+    - id: "collect_requirements"
+      detail: "ヒアリングで得た要件を {{patterns.draft_requirements}} に整理する。"
+    - id: "directory_alignment"
+      detail: "ディレクトリ構成と {domain}_paths.mdc の整合を確認・調整する。"
+    - id: "rule_customization"
+      detail: "00/01-99 のルールをドメイン仕様に合わせて更新する。"
+    - id: "post_completion_choice"
+      detail: "ブラッシュアップ継続か、生成フォルダ単体のプライベートGit化かを確認する。"
 agent_creation_workflow:
   overview:
     phase_sequence:
@@ -61,7 +74,7 @@ agent_creation_workflow:
           tasks:
             - "scripts/enhanced_generate_agent.py の引数（--agent-name, --domain, --description）を確定する。"
             - "output/{agent_name}_agent/ が既存プロジェクトと競合しないことを確認する。"
-            - "Flow / Stock / Archived を初期構成として案内し、この階層で作り始めてよいかユーザーに確認する。別構成案があればこの時点で整理する。"
+            - "Flow / Stock / Archived を初期構成として案内し、この構成で要件定義とフォルダ設計を並行して進めてよいかユーザーに確認する。別構成案があれば要件整理とともにタスクリストへ登録する。"
         - order: 2
           name: "スケルトン生成"
           command:
@@ -74,10 +87,10 @@ agent_creation_workflow:
             - "output/{agent_name}_agent/.cursor/rules/ に移動して作業を開始する。"
             - ".cursor/rules/agent_paths.mdc を {domain}_paths.mdc にリネームする。"
             - "template_paths.mdc を削除して参照衝突を防ぐ。"
-            - "{domain}_paths.mdc の root/dirs/patterns をエージェント固有のディレクトリ構造に合わせて整備する。"
+            - "要件定義で合意したフォルダ構成に基づき、{domain}_paths.mdc の root/dirs/patterns を整備する。"
             - "00_master_rules.mdc を初期化し、説明・見出し・globs・ai_instructions・master_triggers をドメイン仕様に合わせて書き換える（テンプレコメントやサンプルトリガーは全て除去する）。"
             - "97_flow_to_stock_rules.mdc / 98_flow_assist.mdc / 99_rule_maintenance.mdc を対象エージェントのパス・質問・運用プロセスで上書きする。"
-            - "初期の Flow / Stock / Archived 構成で問題ないかユーザーに再確認し、調整が必要なら階層と `{domain}_paths.mdc` を更新する。"
+            - "初期の Flow / Stock / Archived 構成で問題ないかユーザーに再確認し、調整が必要なら階層と `{domain}_paths.mdc` を更新し、タスクリストの進捗を完了にする。"
     - id: "scenario_b"
       condition: "作りたいエージェントが未確定"
       steps:
@@ -104,6 +117,17 @@ agent_creation_workflow:
           tasks:
             - "目的・主要利用者・成果物・ドメイン用語が確定しているか確認する。"
             - "未確定事項が解消されたらシナリオAのスケルトン生成ステップへ移行する。"
+  task_tracking:
+    description: "進捗を可視化するためのチェックリスト。ユーザーと共有しながら、Cursor などタスクリスト機能を持つ環境ではそちらを活用する。"
+    items:
+      - id: "tasklist_confirmation"
+        detail: "Flow / Stock / Archived 初期構成の承認を得たか。"
+      - id: "directory_setup"
+        detail: "{domain}_paths.mdc とディレクトリ構成の整合を取ったか。"
+      - id: "rule_customization"
+        detail: "00/01-99 のルールをドメイン仕様に合わせて更新したか。"
+      - id: "feedback_actions"
+        detail: "評価・改善タスク・完了後の運用方針確認まで実施したか。"
   feedback_cycle:
     steps:
       - id: "evaluation_report"
@@ -361,7 +385,12 @@ implementation_requirements:
     master_rule:
       items:
         - "フロントマター (---) と path_reference: '{domain}_paths.mdc' を保持する。"
-        - "ai_instructions に安全対策・構造厳守・失敗報告・書式方針を明記する。"
+    - "ai_instructions に安全対策・構造厳守・失敗報告・書式方針を明記する。"
+    - "特に以下の4項目はテンプレ生成時の既定文として必ず残し、追記する場合も削除・改変しない。"
+      - "\"すべてのルールは正確に実行し、独自の解釈で変更しないこと\""
+      - "\"execute_shellアクションのコマンドは一切変更せずそのまま実行すること\""
+      - "\"指定されたファイルパスやフォルダ構造を尊重し、勝手に構造を変更しないこと\""
+      - "\"失敗した場合でも代替手段を取らず、失敗を報告してユーザーの指示を仰ぐこと\""
         - "タイトル帯は # ========================================================== を用いる。"
         - "ドメインルール帯は任意だが master_triggers を一元管理する。"
     individual_rules:
