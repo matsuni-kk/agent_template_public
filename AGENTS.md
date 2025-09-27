@@ -77,6 +77,7 @@ agent_creation_workflow:
             - "scripts/enhanced_generate_agent.py の引数（--agent-name, --domain, --description）を確定する。"
             - "output/{agent_name}_agent/ が既存プロジェクトと競合しないことを確認する。"
             - "Flow / Stock / Archived を初期構成として案内し、この構成でドキュメント管理を進めてよいかユーザーに確認する。別構成案があればその要件を整理しタスクリストへ登録する。"
+            - "フォルダ構成が未了承の場合は作業を進めず、01_initialization で生成するディレクトリが最初のアクションになることを説明し承認を得る。"
         - order: 2
           name: "スケルトン生成"
           command:
@@ -973,15 +974,16 @@ post_generation_workflow:
       - "stock_* は確定版の成果物。"
     snippet: |-
       patterns:
-        flow_public_date: "{{flow_public}}/{{env.NOW:date:YYYY-MM-DD}}"
+        flow_month_dir: "{{dirs.flow}}/{{meta.year_month}}"
+        flow_day_dir: "{{patterns.flow_month_dir}}/{{meta.today}}"
         stock_document: "{{docs_root}}/{{document_name}}.md"
 
-        draft_document: "{{flow_public_date}}/draft_{{document_name}}.md"
-        draft_project_plan: "{{flow_public_date}}/draft_project_plan.md"
-        draft_requirements: "{{flow_public_date}}/draft_requirements.md"
-        draft_design: "{{flow_public_date}}/draft_design.md"
-        draft_progress_report: "{{flow_public_date}}/draft_progress_report.md"
-        draft_final_report: "{{flow_public_date}}/draft_final_report.md"
+        draft_document: "{{patterns.flow_day_dir}}/draft_{{document_name}}.md"
+        draft_project_plan: "{{patterns.flow_day_dir}}/draft_project_plan.md"
+        draft_requirements: "{{patterns.flow_day_dir}}/draft_requirements.md"
+        draft_design: "{{patterns.flow_day_dir}}/draft_design.md"
+        draft_progress_report: "{{patterns.flow_day_dir}}/draft_progress_report.md"
+        draft_final_report: "{{patterns.flow_day_dir}}/draft_final_report.md"
 
         output_document: "{{docs_root}}/{{document_name}}.md"
         output_analysis: "{{docs_root}}/analysis_{{env.NOW:date:YYYY-MM-DD}}.md"
@@ -997,7 +999,7 @@ post_generation_workflow:
     description: "完全手動作成ワークフローの10ステップ"
     steps:
       - "Taskリスト作成"
-      - "01番ルール作成"
+      - "01番ルール作成（プロジェクト初期化・フォルダ生成・初期成果物作成）"
       - "02〜15番ルール作成"
       - "00_master_rules.mdc 修正"
       - "パスファイル修正"
@@ -1036,8 +1038,11 @@ post_generation_workflow:
             deliverable: "成功基準・KPI定義書"
       function_design: |-
         function_design_tasks:
+          - task: "プロジェクト初期化ルール設計"
+            content: "01_initialization ルールでディレクトリ生成・初期ドキュメント作成・TODO登録を扱う構成を固める"
+            deliverable: "初期化タスク設計メモ"
           - task: "機能アーキテクチャ設計"
-            content: "01〜15機能の構成と連携"
+            content: "02〜15機能の構成と連携"
             deliverable: "機能アーキテクチャ図"
           - task: "ワークフロー設計"
             content: "Flow/直接変換パターンの選択"
