@@ -42,7 +42,7 @@ agent_creation_tasks:
     - id: "collect_requirements"
       detail: "ヒアリングで得た要件を {{patterns.draft_requirements}} に整理する。"
     - id: "confirm_initial_structure"
-      detail: "Flow / Stock / Archived を初期構成として説明し、要件に沿ったフォルダ設計として承認を得る。"
+      detail: "Flow / Stock / Archived を初期構成として説明し、エージェント要件とフォルダ設計の双方について承認を得る。承認が得られない場合は後続工程へ進まない。"
     - id: "directory_alignment"
       detail: "ディレクトリ構成と {domain}_paths.mdc の整合を確認・調整する。"
     - id: "rule_customization"
@@ -77,7 +77,7 @@ agent_creation_workflow:
             - "scripts/enhanced_generate_agent.py の引数（--agent-name, --domain, --description）を確定する。"
             - "output/{agent_name}_agent/ が既存プロジェクトと競合しないことを確認する。"
             - "Flow / Stock / Archived を初期構成として案内し、この構成でドキュメント管理を進めてよいかユーザーに確認する。別構成案があればその要件を整理しタスクリストへ登録する。"
-            - "フォルダ構成が未了承の場合は作業を進めず、01_initialization で生成するディレクトリが最初のアクションになることを説明し承認を得る。"
+            - "フォルダ構成やエージェント要件の承認が得られない場合は作業を進めず、01_initialization で生成するディレクトリが最初のアクションになることを説明し承認を得る。"
         - order: 2
           name: "スケルトン生成"
           command:
@@ -91,6 +91,7 @@ agent_creation_workflow:
             - ".cursor/rules/agent_paths.mdc を {domain}_paths.mdc にリネームする。"
             - "template_paths.mdc を削除して参照衝突を防ぐ。"
             - "要件定義で合意したフォルダ構成に基づき、{domain}_paths.mdc の root/dirs/patterns を整備する。"
+            - "Stock 側に基礎プロジェクトフォルダ（例: {{patterns.project_dir}}）を作成し、Flow/Stock/Archived が連携する箱を初期化する。"
             - "00_master_rules.mdc を初期化し、説明・見出し・globs・ai_instructions・master_triggers をドメイン仕様に合わせて書き換える（テンプレコメントやサンプルトリガーは全て除去する）。"
             - "01_initialization ルールをプロジェクト初期化（ディレクトリ生成・初期ドキュメント作成・TODO登録）に対応させる。"
             - "02番以降のルールは初期化完了後に要件へ沿って順次設計・実装する計画を立て、タスクリストへ反映する。"
@@ -118,12 +119,12 @@ agent_creation_workflow:
           tasks:
             - "{{patterns.draft_requirements}} に要件をまとめる。"
             - "必要に応じて {{patterns.draft_project_plan}} を作成する。"
-            - "トリガー名称・テンプレート構造・主要ステップ案を整理し、コメントは {{patterns.flow_public_date}} に残す。"
+            - "トリガー名称・テンプレート構造・主要ステップ案を整理し、コメントは {{patterns.flow_day_dir}} に残す。"
         - order: 4
           name: "ビルド準備完了判定"
           tasks:
             - "目的・主要利用者・成果物・ドメイン用語が確定しているか確認する。"
-            - "未確定事項が解消されたらシナリオAのスケルトン生成ステップへ移行する。"
+            - "要件やフォルダ構成の承認が得られていない場合は移行せず、承認取得後にシナリオAのスケルトン生成ステップへ進む。"
   task_tracking:
     description: "進捗を可視化するためのチェックリスト。ユーザーと共有しながら、Cursor などタスクリスト機能を持つ環境ではそちらを活用する。"
     items:
@@ -140,7 +141,7 @@ agent_creation_workflow:
       - id: "evaluation_report"
         name: "評価レポート作成"
         tasks:
-          - "{{patterns.flow_public_date}}/evaluation_report_{{meta.today}}.md を作成し、Syntax・Functional・Goal・Utility の観点で評価する。"
+          - "{{patterns.flow_day_dir}}/evaluation_report_{{meta.today}}.md を作成し、Syntax・Functional・Goal・Utility の観点で評価する。"
           - "判定根拠と改善点を出典・日時・担当者付きで記録する。"
       - id: "improvement_tasks"
         name: "改善タスク管理"
@@ -974,16 +975,15 @@ post_generation_workflow:
       - "stock_* は確定版の成果物。"
     snippet: |-
       patterns:
-        flow_month_dir: "{{dirs.flow}}/{{meta.year_month}}"
-        flow_day_dir: "{{patterns.flow_month_dir}}/{{meta.today}}"
+        flow_public_date: "{{flow_public}}/{{env.NOW:date:YYYY-MM-DD}}"
         stock_document: "{{docs_root}}/{{document_name}}.md"
 
-        draft_document: "{{patterns.flow_day_dir}}/draft_{{document_name}}.md"
-        draft_project_plan: "{{patterns.flow_day_dir}}/draft_project_plan.md"
-        draft_requirements: "{{patterns.flow_day_dir}}/draft_requirements.md"
-        draft_design: "{{patterns.flow_day_dir}}/draft_design.md"
-        draft_progress_report: "{{patterns.flow_day_dir}}/draft_progress_report.md"
-        draft_final_report: "{{patterns.flow_day_dir}}/draft_final_report.md"
+        draft_document: "{{flow_public_date}}/draft_{{document_name}}.md"
+        draft_project_plan: "{{flow_public_date}}/draft_project_plan.md"
+        draft_requirements: "{{flow_public_date}}/draft_requirements.md"
+        draft_design: "{{flow_public_date}}/draft_design.md"
+        draft_progress_report: "{{flow_public_date}}/draft_progress_report.md"
+        draft_final_report: "{{flow_public_date}}/draft_final_report.md"
 
         output_document: "{{docs_root}}/{{document_name}}.md"
         output_analysis: "{{docs_root}}/analysis_{{env.NOW:date:YYYY-MM-DD}}.md"
@@ -1000,7 +1000,7 @@ post_generation_workflow:
     steps:
       - "Taskリスト作成"
       - "01番ルール作成（プロジェクト初期化・フォルダ生成・初期成果物作成）"
-      - "02〜15番ルール作成"
+      - "02〜15番ルール作成（要件に応じて順次設計）"
       - "00_master_rules.mdc 修正"
       - "パスファイル修正"
       - "動作テスト"
@@ -1008,6 +1008,10 @@ post_generation_workflow:
       - "ブラッシュアップ要否判定"
       - "必要に応じたブラッシュアップ実施"
       - "ルール保存とコミット"
+    notes:
+      - "01番ルールは常にプロジェクト初期化（フォルダ生成・初期ドキュメント作成）を担い、PMBOKの立上げプロセスに相当する。"
+      - "フォルダ構成と要件の承認を得るまで後続工程へ進まないこと。"
+      - "02番以降のルールは要件定義の結果に応じて順次作成し、タスクリストで進捗管理する。"
   task_list_guidance:
     precondition: "すべての開発はTaskリスト作成から開始する。"
     stages:
