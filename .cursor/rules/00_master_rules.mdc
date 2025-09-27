@@ -38,8 +38,10 @@ design_principles:
 # =========================
 
 agent_creation_tasks:
-  description: "ヒアリング結果に応じてAgent作成工程全てを管理する進捗タスクリスト。ユーザーと共有し、必要に応じて項目を追加・削除する。Cursorなどのタスク機能がある場合はそちらを利用する。"
+  description: "ヒアリング結果に応じてAgent作成工程全てを管理する進捗タスクリスト。ユーザーと共有し、必要に応じて項目を追加・削除する。Cursorなどのタスク機能がある場合はそちらを利用する。タスクリストは本テンプレートリポジトリの Flow 階層（例: Flow/agent_build/{{meta.year_month}}/{{meta.today}}_agent_creation_tasklist.md）で保存・更新し、生成するエージェントのディレクトリには配置しない。"
   default_items:
+    - id: "configure_root_path"
+      detail: "`templates.root_dir` と `root: \"{{templates.root_dir}}/{{agent_name}}\"` を実行環境に合わせて設定し、出力先パスを確定する。設定内容はタスクリストに記録する。"
     - id: "collect_requirements"
       detail: "ヒアリングで得た要件を {{patterns.draft_requirements}} に整理する。"
     - id: "confirm_initial_structure"
@@ -48,6 +50,8 @@ agent_creation_tasks:
       detail: "ディレクトリ構成と {domain}_paths.mdc の整合を確認・調整する。"
     - id: "rule_customization"
       detail: "00/01-99 のルールをドメイン仕様に合わせて更新する。"
+    - id: "update_tasklist_file"
+      detail: "タスクリストを本テンプレートリポジトリの Flow/agent_build/ 階層に記録・更新し、生成エージェント配下へは追加しない。"
     - id: "cleanup_sample_rules"
       detail: "テンプレートコピー後に残ったサンプルルールファイル（01_sample_*.mdc など）を削除する。"
     - id: "post_completion_choice"
@@ -91,12 +95,15 @@ agent_creation_workflow:
             - "output/{agent_name}_agent/.cursor/rules/ に移動して作業を開始する。"
             - ".cursor/rules/agent_paths.mdc を {domain}_paths.mdc にリネームする。"
             - "template_paths.mdc を削除して参照衝突を防ぐ。"
+            - "`templates.root_dir` および `root: \"{{templates.root_dir}}/{{agent_name}}\"` が実行環境の出力先を指すよう更新し、設定値をタスクリストに記録する。"
             - "要件定義で合意したフォルダ構成に基づき、{domain}_paths.mdc の root/dirs/patterns を整備する（コメントも環境に合わせて templates.root_dir を説明できるよう更新する）。"
             - "Stock 側に基礎プロジェクトフォルダ（例: {{patterns.project_dir}}）を作成し、Flow/Stock/Archived が連携する箱を初期化する。"
+            - "タスクリストを本テンプレートリポジトリの Flow/agent_build/ 階層に作成し、初期TODOを登録する（生成エージェント配下には配置しない）。"
             - "00_master_rules.mdc を初期化し、説明・見出し・globs・ai_instructions・master_triggers をドメイン仕様に合わせて書き換える（テンプレコメントやサンプルトリガーは全て除去する）。"
             - "01_initialization ルールをプロジェクト初期化（ディレクトリ生成・初期ドキュメント作成・TODO登録）に対応させる。"
             - "02番以降のルールは初期化完了後に要件へ沿って順次設計・実装する計画を立て、タスクリストへ反映する。"
             - "{domain}_paths.mdc やテンプレート内コメント（例: templates.root_dir）を環境に合わせて更新し、利用者が迷わないよう明示する。"
+            - "02番以降で扱う成果物ごとに、`{domain}_paths.mdc` の patterns セクションへ出力ファイルパターン（例: {{patterns.output_requirements_report}}）とファイル名規約を追加する。"
       - "master_triggers を含むマスタールール全体の整形・不要トリガー削除・番号整合を完了させてから次工程に進む。"
             - "97_flow_to_stock_rules.mdc / 98_flow_assist.mdc / 99_rule_maintenance.mdc を対象エージェントのパス・質問・運用プロセスで上書きする。"
             - "テンプレートに同梱されているサンプルルール（01_sample_*.mdc 等）が残っている場合は、このタイミングで削除する。"
@@ -130,6 +137,8 @@ agent_creation_workflow:
   task_tracking:
     description: "進捗を可視化するためのチェックリスト。ユーザーと共有しながら、Cursor などタスクリスト機能を持つ環境ではそちらを活用する。"
     items:
+      - id: "root_path_configured"
+        detail: "`templates.root_dir` と `root: \"{{templates.root_dir}}/{{agent_name}}\"` が実行環境に合わせて設定され、タスクリストに記録されているか。"
       - id: "tasklist_confirmation"
         detail: "Flow / Stock / Archived 初期構成の承認を得たか。"
       - id: "directory_setup"
@@ -254,15 +263,17 @@ quick_reference:
   phases:
     - order: 1
       name: "Phase 1: 設計準備"
-      focus: "ドメイン分析・要件定義・機能設計を整理し、成功基準とKPIを合意する。"
+      focus: "ドメイン分析・要件定義・機能設計を整理し、成功基準とKPIを合意する。root設定(`templates.root_dir`/`root: \"{{templates.root_dir}}/{{agent_name}}\"`)と Flow/agent_build タスクリストの初期化をここで完了させる。"
       deliverables:
         - "TaskリストYAML"
         - "要件定義メモ"
+        - "Flow/agent_build/{{meta.year_month}}/{{meta.today}}_agent_creation_tasklist.md（root設定と承認事項を記録）"
     - order: 2
       name: "Phase 2: ルール実装"
-      focus: "00_master_rules.mdc と {domain}_paths.mdc を基軸に01〜15番の機能ルールをテンプレ準拠で作成する。"
+      focus: "00_master_rules.mdc と {domain}_paths.mdc を基軸に01〜15番の機能ルールをテンプレ準拠で作成する。02番以降の各ルールは成果物ファイルの格納パターン（{{patterns.output_*}} 等）を `{domain}_paths.mdc` に追加し、Flow/Stock/Archived のどの階層へ保存するか明示する。"
       deliverables:
         - ".cursor/rules/*.mdc"
+        - "{domain}_paths.mdc に追記した出力パターン一覧"
     - order: 3
       name: "Phase 3: 品質保証"
       focus: "実行テストと evaluation_report_YYYY-MM-DD.md で Syntax/Functional/Goal/Utility を採点する。"
@@ -388,6 +399,8 @@ implementation_requirements:
       - "path は {{patterns.xxx}} 形式で参照する。"
       - "template_reference は ファイル名.mdc => セクション名 形式で統一する。"
       - "content 内の改行は \n\n で明確に区切る。"
+      - "`templates.root_dir` と `root: \"{{templates.root_dir}}/{{agent_name}}\"` の設定内容を Flow/agent_build タスクリストに記録し、全ルールが同一の出力先階層を参照するようにする。"
+      - "02番以降のルールで新たな成果物を生成する場合は、`{domain}_paths.mdc` の patterns に `output_` プレフィックスでファイル名・ディレクトリを定義してからトリガーへ参照させる。"
     error_prevention:
       - "ファイル名は作成する01〜15番のファイルと一致させる。"
       - "パスパターンは {domain}_paths.mdc で定義されたキーを使用する。"
@@ -773,6 +786,7 @@ post_generation_workflow:
       - "実務で即利用できる詳細な質問・テンプレートを作成する。"
       - "業界標準フレームワークに準拠する。"
       - "01〜89番ルールは alwaysApply: false を設定する。"
+      - "02番以降の各ルールでは、成果物の保存先・ファイル名を `{domain}_paths.mdc` に定義し、Flow/agent_build タスクリストで設定完了をチェックする。"
     function_patterns:
       base_examples:
         - "01_initialization: プロジェクト初期化"
