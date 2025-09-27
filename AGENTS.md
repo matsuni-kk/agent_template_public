@@ -51,6 +51,8 @@ agent_creation_tasks:
       detail: "00/01-99 のルールをドメイン仕様に合わせて更新する。"
     - id: "update_tasklist_file"
       detail: "タスクリストを本テンプレートリポジトリの Flow/agent_build/ 階層に記録・更新し、生成エージェント配下へは追加しない。"
+    - id: "create_requirements_file"
+      detail: "要件定義ファイル（例: {{patterns.flow_day_dir}}/draft_requirements.md）を create_markdown_file アクションで生成し、ヒアリング内容と合意事項を記録する。生成エージェントの構築・評価ループではこのファイルを参照する。"
     - id: "cleanup_sample_rules"
       detail: "テンプレートコピー後に残ったサンプルルールファイル（01_sample_*.mdc など）を削除する。"
     - id: "post_completion_choice"
@@ -98,6 +100,7 @@ agent_creation_workflow:
             - "要件定義で合意したフォルダ構成に基づき、{domain}_paths.mdc の root/dirs/patterns を整備する（コメントも環境に合わせて templates.root_dir を説明できるよう更新する）。"
             - "Stock 側に基礎プロジェクトフォルダ（例: {{patterns.project_dir}}）を作成し、Flow/Stock/Archived が連携する箱を初期化する。"
             - "タスクリストを本テンプレートリポジトリの Flow/agent_build/ 階層に作成し、初期TODOを登録する（生成エージェント配下には配置しない）。"
+            - "要件定義ファイル（{{patterns.draft_requirements}} 等）を create_markdown_file で生成し、ヒアリング結果と仮設計を記録する。"
             - "00_master_rules.mdc を初期化し、説明・見出し・globs・ai_instructions・master_triggers をドメイン仕様に合わせて書き換える（テンプレコメントやサンプルトリガーは全て除去する）。"
             - "01_initialization ルールをプロジェクト初期化（ディレクトリ生成・初期ドキュメント作成・TODO登録）に対応させる。"
             - "02番以降のルールは初期化完了後に要件へ沿って順次設計・実装する計画を立て、タスクリストへ反映する。"
@@ -142,6 +145,8 @@ agent_creation_workflow:
         detail: "Flow / Stock / Archived 初期構成の承認を得たか。"
       - id: "directory_setup"
         detail: "{domain}_paths.mdc とディレクトリ構成の整合を取ったか。"
+      - id: "requirements_doc_ready"
+        detail: "要件定義ファイルが create_markdown_file で生成され、最新のヒアリング内容が反映されているか。"
       - id: "rule_customization"
         detail: "00/01-99 のルールをドメイン仕様に合わせて更新したか。"
       - id: "feedback_actions"
@@ -248,10 +253,10 @@ architecture:
         description: "ブレインストーミング支援"
       - range: "99"
         label: "Rule Maintenance"
-        description: "システム管理"
+        description: "ルール保守・ブラッシュアップ（生成後の対話編集と新規スケルトン作成を含む）"
     note: |-
       01番ルールはプロジェクト初期化（PMBOKの立上げプロセスに相当）を担い、Flow/Stock/Archived の基礎ディレクトリと初期ドキュメントを整備する。
-      97/98/99番台はテンプレ共通ひな型のため、各エージェント固有のドラフト/Stockパスや手順に置き換える。あわせて 00_master_rules.mdc と {domain}_paths.mdc もテンプレ初期状態のまま残さず、ヘッダー・description・globs・ai_instructions・master_triggers・パターン定義をドメイン仕様に揃える（テンプレコメントや汎用トリガーは全て削除、Flow→Stock や Task Management の処理は専用ルール側で扱う）。
+      97/98/99番台はテンプレ共通ひな型のため、各エージェント固有のドラフト/Stockパスや手順に置き換える。特に99番は生成後のエージェントを対話形式でブラッシュアップし、既存ルールの修正と新規ルールのスケルトン作成サポートを安全に実施する運用ルールとして整備する。スケルトンを生成した場合は全セクション（プロンプト/Phase/テンプレなど）を即座に埋める担当と期限をタスクリストで管理し、Flow/agent_build 参照は初回作成エージェント専用であるため、独立後のエージェントでは必ずそのリポジトリ固有の Flow/Stock 構造へ置き換える。要件定義ファイルを必ず参照・更新しながら評価ループを回す。あわせて 00_master_rules.mdc と {domain}_paths.mdc もテンプレ初期状態のまま残さず、ヘッダー・description・globs・ai_instructions・master_triggers・パターン定義をドメイン仕様に揃える（テンプレコメントや汎用トリガーは全て削除、Flow→Stock や Task Management の処理は専用ルール側で扱う）。
 
 
 # =========================
@@ -788,7 +793,7 @@ post_generation_workflow:
       - "02番以降の各ルールでは、成果物の保存先・ファイル名を `{domain}_paths.mdc` に定義し、Flow/agent_build タスクリストで設定完了をチェックする。"
     function_patterns:
       base_examples:
-        - "01_initialization: プロジェクト初期化"
+        - "01_initialization: プロジェクト初期化（Flow/Stock/Archived 基礎フォルダと要件定義ファイル {{patterns.draft_requirements}} の生成、タスクリスト初期化を担当）"
         - "02〜08: ドメイン固有の主要業務機能"
         - "09〜12: 分析・評価機能"
         - "13〜15: 文書作成・報告機能"

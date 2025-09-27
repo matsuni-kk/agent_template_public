@@ -117,23 +117,26 @@ master_triggers:
     steps:
       - name: "start_message"
         action: "notify"
-        message: "**ルール保守を開始します。** 追加・編集いずれも標準フォーマットを厳守します。"
+        message: "**ルールブラッシュアップを開始します。** 対象ルール・変更理由・paths整合について順にヒアリングします。"
       - name: "collect_info"
         action: "call 99_rule_maintenance.mdc => rule_maintenance_questions"
-        message: "必要事項を入力してください。"
+        message: "編集したい内容を具体的に入力してください。未決事項は保留メモとして記録します。"
       - name: "create_log"
         action: "create_markdown_file"
         path: "{{patterns.rule_maintenance_log}}"
         template_reference: "99_rule_maintenance.mdc => rule_maintenance_log_template"
-        message: "変更ログを作成しました。"
+        message: "Flow/agent_build ログを生成しました。検証・レビュー計画が揃っているか確認してください。"
       - name: "maybe_create_rule_skeleton"
         action: "conditional_step"
         condition: "{{operation}} == 'add'"
         true_action: "create_markdown_file: path='{{patterns.rule_skeleton_out}}' template_reference='99_rule_maintenance.mdc => rule_skeleton_template'"
-        false_action: "notify: '編集モード: スケルトン作成はスキップしました'"
+        false_action: "notify: '編集モード: 既存ルールをブラッシュアップします（スケルトン生成は不要）'"
+      - name: "post_creation_instruction"
+        action: "notify"
+        message: "**編集作業のお願い**\n- 追加の場合は {{patterns.rule_skeleton_out}} を開き、プロンプト/Phase/テンプレートなど全セクションをドメイン仕様で埋めてください。\n- 既存ルールの編集の場合は対象ファイルを更新し、変更点をログに追記してください。\n- Flow/agent_build タスクリストで、中身の埋め込みとレビュー完了にチェックを付けるまで忘れないでください。"
       - name: "completion_message"
         action: "notify"
-        message: "**ルール保守を完了しました。**\nログ: {{patterns.rule_maintenance_log}}\n新規/編集対象は .cursor/rules を確認してください。"
+        message: "**ルールブラッシュアップの記録が完了しました。**\n- ログ: {{patterns.rule_maintenance_log}}\n- タスクリスト: Flow/agent_build/{{meta.year_month}}/{{meta.today}}_agent_creation_tasklist.md を更新してください。"
 
 # ==========================================================
 # =========================
@@ -156,7 +159,9 @@ template         : ドメイン名 (e.g., "babok", "knowledge")
 - **90**: Task management (標準化済み)
 - **97**: Flow to Stock rules (標準化済み)
 - **98**: Flow assist / brainstorming
-- **99**: Rule maintenance & system management
+- **99**: Rule maintenance & system management（生成後の対話ブラッシュアップと新規ルールスケルトン作成を担当）
+
+> 99番では既存ルールの修正に加え、operation=add 時のスケルトン生成と埋め込み計画の追跡（Flow/agent_build タスクリスト更新）を必須とする。paths や master_triggers との整合を取り、担当者と期限を必ず記録してください。
 
 ### 3. Standard Directory Structure
 ```

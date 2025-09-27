@@ -1,5 +1,5 @@
 ---
-description: ルール保守（追加・編集）システム（汎用）
+description: 対話型ルールブラッシュアップシステム
 globs:
 ---
 # ==========================================================
@@ -10,85 +10,101 @@ path_reference: "agent_paths.mdc"
 
 # ======== プロンプト（目的と使い方） ========
 prompt_purpose: |
-  任意ドメインのエージェントで、ルール（00/01〜89/90/97/98/99）を安全かつ一貫フォーマットで追加・編集し、適用後すぐ実運用できる状態に整えます。
+  生成済みエージェントのルール（00/01〜99）を対話でブラッシュアップし、必要に応じて新規ルール用のスケルトンも生成しながら、paths・トリガー・テンプレートの整合を保ったまま安全に反映します。
 
 prompt_why_questions: |
-  番号重複・命名不整合・必須セクション欠落・パス不一致を防ぐため、操作種別・番号(NN)・機能名/コード・トリガー・出力先・理由・レビュー情報を事前確定します。
+  編集対象セクション・期待する変更内容・影響範囲・パス更新要否・検証手順を事前に整理し、破壊的変更や書式崩れを防ぐために質問します。
 
 prompt_why_templates: |
-  完全スケルトンと変更ログテンプレートを提供し、成果物の品質・可監査性・再利用性を担保します。
+  変更ログとパッチプランをテンプレート化することで、レビュー・差し戻し・再適用を高速に行い、履歴管理を容易にします。
 
 prompt_principles: |
-  - 命名は `NN_{{meta.domain}}_{function}.mdc`（NNは2桁）で統一する。
-  - path_reference は常に `{domain}_paths.mdc`（本テンプレでは `agent_paths.mdc`）。
-  - プロンプト4点・Phase1/2・プロセス・質問・テンプレ・設定/統合/品質/成功メトリクスを必須とする。
-  - 追加・編集はログ化し、レビュー・承認を確実に通過させる。
+  - 既存ルールを尊重し、不要な再生成や書式崩れを避ける。
+  - `templates.root_dir` / `root: "{{templates.root_dir}}/{{agent_name}}"` と paths の整合を常に確認する。
+  - 変更理由・影響範囲・検証結果をFlow/agent_buildタスクリストと変更ログに記録する。
+  - 対話で合意した内容のみ適用し、不確定な場合は保留メモを残す。
 
 # ======== ルール保守統合エージェント ========
 
 system_capabilities:
-  rule_scaffolding: "NN/命名/見出し/必須セクションを満たす汎用スケルトン生成"
-  format_enforcement: "標準フォーマットの自動検証（プロンプト4点等）"
-  trigger_registration: "マスターへのトリガー追記指針を提示"
-  path_integration: "pathsファイルとの整合点検と追加提案"
-  qa_checklist: "レビュー観点のチェックリスト生成"
-  audit_logging: "変更ログ（誰/いつ/なぜ/何を）を作成"
+  interactive_diagnosis: "対象ルールと変更箇所を対話で切り分け、影響範囲を明確化"
+  format_guard: "必須セクション・区切り・命名規則をリアルタイムでチェック"
+  diff_briefing: "修正前後の要約と追加すべき paths/template_reference を提案"
+  trigger_alignment: "master_triggers とルール本文の整合を確認し、更新手順を提示"
+  log_generation: "Flow/agent_build 向け変更ログとレビューチェックリストを自動生成"
+  rollback_support: "差し戻し時の復旧ポイントとタスクリスト連携を案内"
+  scaffold_new_rule: "operation=add 時に標準スケルトンと master_triggers 追記案を提示"
 
 # ======== Phase 1: 計画フェーズ ========
 
 phase_1_description: |
-  目的・対象・影響範囲を明確にし、番号競合と命名規則適合を確認します。必要なら paths に新パターンを追加します。完了条件は入力要件充足です。
+  編集対象ルール・変更理由・影響範囲・関連pathsを洗い出し、既存構造との衝突が無いか確認します。Flow/agent_buildタスクリストに作業項目を登録し、合意内容をログ化できれば完了です。
 
 # ======== Phase 2: 適用フェーズ ========
 
 phase_2_description: |
-  add はスケルトン生成、edit は変更差分チェックとパッチ提案を行います。必要に応じてマスターの master_triggers に追記します。完了条件はログ作成とレビュー準備です。
+  合意済みの変更をパッチプランに落とし込み、必要な paths・master_triggers・テンプレート差分を提示します。Flow/agent_build の変更ログを生成し、レビューと検証計画が揃えば完了です。
 
 # ======== 統合オプション質問 ========
 
 rule_maintenance_questions:
   - key: "operation"
-    prompt: "操作種別（add|edit）："
+    prompt: "操作種別（edit|add。未指定時はedit扱い）："
     type: "text"
     required: true
-    placeholder: "add"
-  - key: "nn"
-    prompt: "対象番号（NN 2桁。01〜89: ドメイン機能、90/97/98/99: 管理）："
+    placeholder: "edit"
+  - key: "target_rule"
+    prompt: "対象ルールファイル（既存または作成予定。例: 02_domain_feature.mdc）："
     type: "text"
     required: true
-    placeholder: "16"
-  - key: "function_code"
-    prompt: "機能コード（英小文字+_。例: change_request）："
+    placeholder: "02_sample_feature.mdc"
+  - key: "new_rule_number"
+    prompt: "operation=add の場合: 追加したい番号（NN 2桁。例: 16）："
     type: "text"
-    required: true
-    placeholder: "rule_guidelines"
-  - key: "function_name"
-    prompt: "機能名（日本語）。例：ルール作成ガイド："
+    required: false
+  - key: "new_rule_code"
+    prompt: "operation=add の場合: 機能コード（英小文字+_）："
     type: "text"
+    required: false
+  - key: "new_rule_name"
+    prompt: "operation=add の場合: 機能名（日本語）："
+    type: "text"
+    required: false
+  - key: "change_scope"
+    prompt: "変更したいセクション・行・トリガー内容："
+    type: "multiline"
     required: true
-    placeholder: "ルール作成ガイド"
-  - key: "trigger_pattern"
-    prompt: "マスタートリガーの正規表現（()で包括、|区切り）："
+    placeholder: "例：prompt_why_templates を最新要件へ更新"
+  - key: "expected_outcome"
+    prompt: "適用後にどうなっていてほしいか（成果物/挙動）："
+    type: "multiline"
+    required: true
+  - key: "paths_update"
+    prompt: "paths（{domain}_paths.mdc）を追加/修正する必要がありますか？（具体的なキー名と値）："
     type: "multiline"
     required: false
-    placeholder: "(ルール作成|ルール保守|rule maintenance)"
-  - key: "document_type"
-    prompt: "主たるドキュメントタイプ（ドラフト/ログ等）："
-    type: "text"
-    required: false
-    placeholder: "rule maintenance log"
-  - key: "add_master_trigger"
-    prompt: "00_master_rules.mdc にトリガー追記しますか？（yes|no）："
-    type: "text"
-    required: false
-    placeholder: "yes"
-  - key: "new_patterns"
-    prompt: "paths に新規追加したいパターン（任意。key: value...）："
+  - key: "master_trigger_update"
+    prompt: "00_master_rules.mdc の master_triggers を変更・追記しますか？（yes/no と内容）："
     type: "multiline"
     required: false
-    placeholder: "draft_some_output: '{{dirs.flow}}/Public/{{meta.today}}/some.md'"
+  - key: "tasklist_sync"
+    prompt: "Flow/agent_build のタスクリストへ追記するチェック項目："
+    type: "multiline"
+    required: false
+  - key: "verification_plan"
+    prompt: "検証手順（レビュー・動作確認・必要なテストなど）："
+    type: "multiline"
+    required: true
+  - key: "rollback_plan"
+    prompt: "差し戻し時の復旧方法・連絡先："
+    type: "multiline"
+    required: false
+  - key: "completion_plan"
+    prompt: "スケルトンを埋める/既存ルールを更新する具体的な作業手順（誰が・いつ・どこまで）："
+    type: "multiline"
+    required: true
   - key: "reason"
-    prompt: "変更理由（Why）と期待効果："
+    prompt: "変更理由（Why）と根拠資料："
     type: "multiline"
     required: true
   - key: "reviewer"
@@ -103,40 +119,47 @@ rule_maintenance_questions:
 # ======== ルール保守プロセス ========
 
 rule_maintenance_steps:
-  1_scaffold_or_edit:
-    name: "スケルトン生成/編集準備"
+  1_plan_alignment:
+    name: "変更計画と整合確認"
     phases:
-      - "operation=add: 汎用スケルトン生成（NN/命名/区切り/必須セクション）"
-      - "operation=edit: 既存ファイルの必須セクション/命名/区切りの点検"
-      - "paths 整合確認（不足時は new_patterns 提案）"
+      - "対象ルールの現状を把握し、変更箇所と関連セクションを特定"
+      - "paths・master_triggers・テンプレート参照先への影響を洗い出す"
+      - "Flow/agent_build タスクリストへ作業・レビュー・検証項目を登録"
     quality_standards:
-      - "プロンプト4点・system_capabilities・Phase1/2・プロセス・質問・テンプレ・設定・統合・品質・成功メトリクスが存在"
-      - "path_reference が {domain}_paths.mdc に対応（本テンプレは agent_paths）"
-      - "alwaysApply の規約準拠"
+      - "変更理由と期待成果が明文化されている"
+      - "paths 更新要否が判断済みである"
+      - "レビュー責任者と期限が設定済みである"
 
-  2_register_and_log:
-    name: "トリガー登録とログ作成"
+  2_patch_design_and_log:
+    name: "パッチ設計とログ生成"
     phases:
-      - "必要に応じ 00_master_rules.mdc にトリガー追記（完全形式）"
-      - "変更ログ（誰/いつ/なぜ/何を/どこへ）を作成"
-      - "レビュー観点（形式/整合/安全/運用）チェックリスト化"
+      - "変更前後の差分概要と必要な追記事項（paths/テンプレ/トリガー）を整理"
+      - "Flow/agent_build/{{meta.year_month}}/{{meta.today}}_agent_creation_tasklist.md へ反映状況を記録"
+      - "変更ログを作成し、検証・ロールバック手順と埋め込み作業計画を明記"
+      - "operation=add の場合はスケルトン各セクションを埋める担当と期限を設定"
     integration_points:
       - "00_master_rules.mdc => master_triggers"
       - "agent_paths.mdc"
-      - "Flow/Public（ログ配置）"
+      - "Flow日付ディレクトリ（変更ログ配置）"
 
 # ======== ルール保守ワークフロー ========
 
 rule_maintenance_workflow:
   phase_1:
+    - name: "情報収集"
+      action: "call 99_rule_maintenance.mdc => rule_maintenance_questions"
+      description: "変更計画に必要な情報を取得"
+      mandatory: true
+  phase_2:
     - name: "変更ログ作成"
       action: "create_markdown_file"
-      description: "ルール保守の変更ログを作成"
+      description: "Flow/agent_build ログを生成し、レビュー準備を整える"
       mandatory: true
 
 # ======== テンプレート ========
 
 rule_skeleton_template: |
+  # NOTE: operation=add の場合のみ使用してください
   ---
   description: {{meta.domain}} における {{function_name}} システム
   globs:
@@ -222,6 +245,42 @@ rule_skeleton_template: |
     ## サマリー
     {{example_key}}
 
+# ======== ログテンプレート ========
+
+rule_maintenance_log_template: |
+  # Rule Maintenance Log - {{target_rule}}
+  **日時:** {{meta.timestamp}}
+  **担当:** {{meta.user}}
+  **操作種別:** {{operation}}
+
+  ## 変更概要
+  - 対象ルール: {{target_rule}}
+  - 追加番号: {{new_rule_number}}
+  - 追加コード: {{new_rule_code}}
+  - 追加名称: {{new_rule_name}}
+  - 変更箇所: {{change_scope}}
+  - 期待する成果: {{expected_outcome}}
+  - 変更理由: {{reason}}
+
+  ## 影響範囲と対応
+  - paths 更新: {{paths_update}}
+  - master_triggers 更新: {{master_trigger_update}}
+  - タスクリスト同期: {{tasklist_sync}}
+
+  ## 検証とロールバック
+  - 検証手順: {{verification_plan}}
+  - ロールバック計画: {{rollback_plan}}
+
+  ## 埋め込み／更新作業
+  {{completion_plan}}
+
+  ## レビュー情報
+  - レビュワー: {{reviewer}}
+  - レビュー期限: {{due}}
+
+  ---
+  - Flowログ保存先: {{patterns.rule_maintenance_log}}
+
   # ======== エラーハンドリング ========
 
   error_handling:
@@ -269,12 +328,28 @@ error_handling:
     recovery_actions:
       - "reasonフィールドを追記"
       - "背景情報を添付"
+  missing_change_scope:
+    message: "変更箇所が未指定です。セクションやトリガーを明記してください。"
+    recovery_actions:
+      - "対象セクション名・行番号を追記"
+      - "変更しない箇所は '変更なし' と明示"
+  incomplete_verification:
+    message: "検証手順が不足しています。レビューや動作確認方法を記載してください。"
+    recovery_actions:
+      - "verification_plan にレビュー・動作確認・テストの詳細を追記"
+      - "必要であれば Flow/agent_build のタスクリストへ検証項目を追加"
+  missing_add_metadata:
+    message: "operation=add では new_rule_number/new_rule_code/new_rule_name を入力してください。"
+    recovery_actions:
+      - "各項目を追記し、番号重複が無いか確認"
+      - "必要であれば AGENTS.md に沿って01〜89の命名規則を再確認"
 
 # ======== 設定 ========
 
 rule_maintenance_settings:
-  log_path: "{{patterns.flow_public_logs}}"
-  default_reviewer: "チームリード"
+  log_path: "{{patterns.rule_maintenance_log}}"
+  tasklist_path: "Flow/agent_build/{{meta.year_month}}/{{meta.today}}_agent_creation_tasklist.md"
+  default_reviewer: "エージェント責任者"
   approval_required: true
 
 # ======== 統合ポイント ========
@@ -286,18 +361,26 @@ integration_points:
   paths_file:
     trigger: "新規パターン登録"
     action: "agent_paths.mdc を編集"
+  flow_agent_build_tasklist:
+    trigger: "変更計画確定"
+    action: "Flow/agent_build タスクリストに項目を追加"
+  new_rule_skeleton:
+    trigger: "operation=add"
+    action: "{{patterns.rule_skeleton_out}} にスケルトンを生成"
 
 # ======== 品質保証 ========
 
 quality_assurance:
   mandatory_checks:
-    - "必須項目が入力済み"
-    - "変更ログがFlow/Publicに保存済み"
-    - "レビュー期限が設定"
+    - "変更理由・影響範囲・検証計画が記録されている"
+    - "Flow/agent_build タスクリストとログが更新済み"
+    - "paths・master_triggers の整合が確認されている"
+    - "スケルトン/既存ルールの埋め込み計画が completion_plan に記録されている"
 
 # ======== 成功メトリクス ========
 
 success_metrics:
   - "レビュー差戻し率 < 5%"
-  - "ルール更新から配布までの時間 < 1営業日"
-  - "フォーマット逸脱ゼロを3連続更新で達成"
+  - "Flowタスクリスト更新から反映まで < 1営業日"
+  - "paths/master_triggers の整合エラー 0 件"
+  - "スケルトン埋め忘れ 0 件（タスクリスト完了率100%）"
