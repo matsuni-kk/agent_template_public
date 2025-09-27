@@ -38,7 +38,7 @@ design_principles:
 # =========================
 
 agent_creation_tasks:
-  description: "ヒアリングで蓄積した要件と合意事項を基にエージェント作成工程を管理する進捗タスクリスト。ユーザーと共有し、必要に応じて項目を追加・削除する。初回の作成支援時のみ本テンプレートリポジトリの Flow 階層（例: Flow/agent_build/{{meta.year_month}}/{{meta.today}}_agent_creation_tasklist.md）に保存し、要件定義ファイルと逐次同期する。生成後のエージェントが独立運用する際は、このタスクリストは使用せず、各リポジトリ固有のフローで管理する。"
+  description: "ヒアリングで蓄積した要件と合意事項を基にエージェント作成工程を管理する進捗タスクリスト。ユーザーと共有し、必要に応じて項目を追加・削除する。初回の作成支援時のみ本テンプレートリポジトリの Flow 階層（例: Flow/agent_build/{{meta.year_month}}/{{meta.today}}_agent_creation_tasklist.md）に保存し、要件定義ファイルと逐次同期する。外部タスク機能を併用する場合でも、要件定義ファイルは必ず create_markdown_file で生成・更新することが必須。生成後のエージェントが独立運用する際は、このタスクリストは使用せず、各リポジトリ固有のフローで管理する。"
   default_items:
     - id: "configure_root_path"
       detail: "`templates.root_dir` と `root: \"{{templates.root_dir}}/{{agent_name}}\"` を実行環境に合わせて設定し、出力先パスを確定する。設定内容はタスクリストに記録する。"
@@ -53,7 +53,7 @@ agent_creation_tasks:
     - id: "update_tasklist_file"
       detail: "タスクリストを本テンプレートリポジトリの Flow/agent_build/ 階層に記録・更新し、生成エージェント配下へは追加しない。"
     - id: "create_requirements_file"
-      detail: "要件定義ファイル（例: {{patterns.flow_day_dir}}/draft_requirements.md）を create_markdown_file で生成し、ユーザーヒアリングで得た要件を逐次追記する。タスクリストの各ステップはこのファイルを参照しながら実行・評価する。生成後にエージェントが独立運用する際は、派生先リポジトリ内で要件ファイルを運用する。"
+      detail: "要件定義ファイル（例: {{patterns.flow_day_dir}}/draft_requirements.md）を create_markdown_file で必ず生成し、ユーザーヒアリングで得た要件を逐次追記する。外部タスク機能を利用していてもこのファイルは必須とする。タスクリストの各ステップは要件ファイルを参照しながら実行・評価する。生成後にエージェントが独立運用する際は、派生先リポジトリ内で要件ファイルを運用する。"
     - id: "cleanup_sample_rules"
       detail: "テンプレートコピー後に残ったサンプルルールファイル（01_sample_*.mdc など）を削除する。"
     - id: "post_completion_choice"
@@ -101,7 +101,7 @@ agent_creation_workflow:
             - "要件定義で合意したフォルダ構成に基づき、{domain}_paths.mdc の root/dirs/patterns を整備する（コメントも環境に合わせて templates.root_dir を説明できるよう更新する）。"
             - "Stock 側に基礎プロジェクトフォルダ（例: {{patterns.project_dir}}）を作成し、Flow/Stock/Archived が連携する箱を初期化する。"
             - "タスクリストを本テンプレートリポジトリの Flow/agent_build/ 階層に作成し、初期TODOを登録する（生成エージェント配下には配置しない）。"
-            - "要件定義ファイル（{{patterns.draft_requirements}} 等）を create_markdown_file で生成し、ヒアリング結果と仮設計を記録する。"
+            - "要件定義ファイル（{{patterns.draft_requirements}} 等）を create_markdown_file で必ず生成し、ヒアリング結果と仮設計を記録する（タスク機能の有無に関わらず必須）。"
             - "00_master_rules.mdc を初期化し、説明・見出し・globs・ai_instructions・master_triggers をドメイン仕様に合わせて書き換える（テンプレコメントやサンプルトリガーは全て除去する）。"
             - "01_initialization ルールをプロジェクト初期化（ディレクトリ生成・初期ドキュメント作成・TODO登録）に対応させる。"
             - "02番以降のルールは初期化完了後に要件へ沿って順次設計・実装する計画を立て、タスクリストへ反映する。"
@@ -120,7 +120,7 @@ agent_creation_workflow:
           tasks:
             - "{{patterns.flow_day_dir}}/agent_discovery_brief.md を作成し、課題・対象ユーザー・期待成果を整理する。"
             - "既存資料があれば gather_existing_info を実行し、参照元リンクと取得日時を記録する。"
-            - "要件定義ファイル（{{patterns.draft_requirements}} 等）を作成し、以降のヒアリングで得た情報を逐次反映する。"
+            - "要件定義ファイル（{{patterns.draft_requirements}} 等）を create_markdown_file で必ず生成し、以降のヒアリングで得た情報を逐次反映する（外部タスク機能利用時も必須）。"
         - order: 2
           name: "要件定義セッション"
           tasks:
