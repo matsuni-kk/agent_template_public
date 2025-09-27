@@ -38,7 +38,7 @@ design_principles:
 # =========================
 
 agent_creation_tasks:
-  description: "ヒアリング結果に応じてAgent作成工程全てを管理する進捗タスクリスト。ユーザーと共有し、必要に応じて項目を追加・削除する。Cursorなどのタスク機能がある場合はそちらを利用する。タスクリストは本テンプレートリポジトリの Flow 階層（例: Flow/agent_build/{{meta.year_month}}/{{meta.today}}_agent_creation_tasklist.md）で保存・更新し、生成するエージェントのディレクトリには配置しない。"
+  description: "ヒアリングで蓄積した要件と合意事項を基にエージェント作成工程を管理する進捗タスクリスト。ユーザーと共有し、必要に応じて項目を追加・削除する。初回の作成支援時のみ本テンプレートリポジトリの Flow 階層（例: Flow/agent_build/{{meta.year_month}}/{{meta.today}}_agent_creation_tasklist.md）に保存し、要件定義ファイルと逐次同期する。生成後のエージェントが独立運用する際は、このタスクリストは使用せず、各リポジトリ固有のフローで管理する。"
   default_items:
     - id: "configure_root_path"
       detail: "`templates.root_dir` と `root: \"{{templates.root_dir}}/{{agent_name}}\"` を実行環境に合わせて設定し、出力先パスを確定する。設定内容はタスクリストに記録する。"
@@ -53,7 +53,7 @@ agent_creation_tasks:
     - id: "update_tasklist_file"
       detail: "タスクリストを本テンプレートリポジトリの Flow/agent_build/ 階層に記録・更新し、生成エージェント配下へは追加しない。"
     - id: "create_requirements_file"
-      detail: "要件定義ファイル（例: {{patterns.flow_day_dir}}/draft_requirements.md）を create_markdown_file アクションで生成し、ヒアリング内容と合意事項を記録する。生成エージェントの構築・評価ループではこのファイルを参照する。"
+      detail: "要件定義ファイル（例: {{patterns.flow_day_dir}}/draft_requirements.md）を create_markdown_file で生成し、ユーザーヒアリングで得た要件を逐次追記する。タスクリストの各ステップはこのファイルを参照しながら実行・評価する。生成後にエージェントが独立運用する際は、派生先リポジトリ内で要件ファイルを運用する。"
     - id: "cleanup_sample_rules"
       detail: "テンプレートコピー後に残ったサンプルルールファイル（01_sample_*.mdc など）を削除する。"
     - id: "post_completion_choice"
@@ -107,6 +107,7 @@ agent_creation_workflow:
             - "02番以降のルールは初期化完了後に要件へ沿って順次設計・実装する計画を立て、タスクリストへ反映する。"
             - "{domain}_paths.mdc やテンプレート内コメント（例: templates.root_dir）を環境に合わせて更新し、利用者が迷わないよう明示する。"
             - "02番以降で扱う成果物ごとに、`{domain}_paths.mdc` の patterns セクションへ出力ファイルパターン（例: {{patterns.output_requirements_report}}）とファイル名規約を追加する。"
+            - "99_rule_maintenance.mdc のログ/スケルトン/タスクリスト参照パターンを生成エージェントの Flow/Stock 構造に合わせて編集し、対応キーを {domain}_paths.mdc に追加する（Flow/agent_build の参照はここで除去する）。"
       - "master_triggers を含むマスタールール全体の整形・不要トリガー削除・番号整合を完了させてから次工程に進む。"
             - "97_flow_to_stock_rules.mdc / 98_flow_assist.mdc / 99_rule_maintenance.mdc を対象エージェントのパス・質問・運用プロセスで上書きする。"
             - "テンプレートに同梱されているサンプルルール（01_sample_*.mdc 等）が残っている場合は、このタイミングで削除する。"
@@ -119,6 +120,7 @@ agent_creation_workflow:
           tasks:
             - "{{patterns.flow_day_dir}}/agent_discovery_brief.md を作成し、課題・対象ユーザー・期待成果を整理する。"
             - "既存資料があれば gather_existing_info を実行し、参照元リンクと取得日時を記録する。"
+            - "要件定義ファイル（{{patterns.draft_requirements}} 等）を作成し、以降のヒアリングで得た情報を逐次反映する。"
         - order: 2
           name: "要件定義セッション"
           tasks:
@@ -157,7 +159,7 @@ agent_creation_workflow:
       - id: "evaluation_report"
         name: "評価レポート作成"
         tasks:
-          - "{{patterns.flow_day_dir}}/evaluation_report_{{meta.today}}.md を作成し、Syntax・Functional・Goal・Utility の観点で評価する。"
+          - "{{patterns.flow_day_dir}}/evaluation_report_{{meta.today}}.md を作成し、Syntax・Functional・Goal・Utility の観点で評価する。要件定義ファイルと突き合わせて未達事項・差分を記録する。"
           - "判定根拠と改善点を出典・日時・担当者付きで記録する。"
       - id: "improvement_tasks"
         name: "改善タスク管理"
@@ -257,7 +259,7 @@ architecture:
         description: "ルール保守・ブラッシュアップ（生成後の対話編集と新規スケルトン作成を含む）"
     note: |-
       01番ルールはプロジェクト初期化（PMBOKの立上げプロセスに相当）を担い、Flow/Stock/Archived の基礎ディレクトリと初期ドキュメントを整備する。
-      97/98/99番台はテンプレ共通ひな型のため、各エージェント固有のドラフト/Stockパスや手順に置き換える。特に99番は生成後のエージェントを対話形式でブラッシュアップし、既存ルールの修正と新規ルールのスケルトン作成サポートを安全に実施する運用ルールとして整備する。スケルトンを生成した場合は全セクション（プロンプト/Phase/テンプレなど）を即座に埋める担当と期限をタスクリストで管理し、Flow/agent_build 参照は初回作成エージェント専用であるため、独立後のエージェントでは必ずそのリポジトリ固有の Flow/Stock 構造へ置き換える。要件定義ファイルを必ず参照・更新しながら評価ループを回す。あわせて 00_master_rules.mdc と {domain}_paths.mdc もテンプレ初期状態のまま残さず、ヘッダー・description・globs・ai_instructions・master_triggers・パターン定義をドメイン仕様に揃える（テンプレコメントや汎用トリガーは全て削除、Flow→Stock や Task Management の処理は専用ルール側で扱う）。
+      97/98/99番台はテンプレ共通ひな型のため、派生エージェントでは固有の Flow/Stock 構造・paths・運用フローに合わせて必ず更新する。
 
 
 # =========================
@@ -268,20 +270,21 @@ quick_reference:
   phases:
     - order: 1
       name: "Phase 1: 設計準備"
-      focus: "ドメイン分析・要件定義・機能設計を整理し、成功基準とKPIを合意する。root設定(`templates.root_dir`/`root: \"{{templates.root_dir}}/{{agent_name}}\"`)と Flow/agent_build タスクリストの初期化をここで完了させる。"
+      focus: "ドメイン分析・要件定義・機能設計を整理し、成功基準とKPIを合意する。root設定(`templates.root_dir`/`root: \"{{templates.root_dir}}/{{agent_name}}\"`)、初回作成タスクリスト、要件定義ファイルをここで生成し連携させる。"
       deliverables:
         - "TaskリストYAML"
         - "要件定義メモ"
         - "Flow/agent_build/{{meta.year_month}}/{{meta.today}}_agent_creation_tasklist.md（root設定と承認事項を記録）"
+        - "{{patterns.draft_requirements}}（ヒアリング内容と合意事項）"
     - order: 2
       name: "Phase 2: ルール実装"
-      focus: "00_master_rules.mdc と {domain}_paths.mdc を基軸に01〜15番の機能ルールをテンプレ準拠で作成する。02番以降の各ルールは成果物ファイルの格納パターン（{{patterns.output_*}} 等）を `{domain}_paths.mdc` に追加し、Flow/Stock/Archived のどの階層へ保存するか明示する。"
+      focus: "00_master_rules.mdc と {domain}_paths.mdc を基軸に01〜15番の機能ルールをテンプレ準拠で作成する。要件定義ファイルを参照しながら機能を落とし込み、02番以降の各ルールは成果物ファイルの格納パターン（{{patterns.output_*}} 等）を `{domain}_paths.mdc` に追加して Flow/Stock/Archived の保存先を明示する。"
       deliverables:
         - ".cursor/rules/*.mdc"
         - "{domain}_paths.mdc に追記した出力パターン一覧"
     - order: 3
       name: "Phase 3: 品質保証"
-      focus: "実行テストと evaluation_report_YYYY-MM-DD.md で Syntax/Functional/Goal/Utility を採点する。"
+      focus: "実行テストと evaluation_report_YYYY-MM-DD.md で Syntax/Functional/Goal/Utility を採点し、要件定義ファイルと照合して不足・差分を特定する。"
       deliverables:
         - "評価レポート"
     - order: 4
