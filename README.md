@@ -46,27 +46,47 @@
 **単体Git化で本格運用：**
 - `output/{your_domain}_agent/` フォルダ単体を新しいGitリポジトリとして独立運用
 - プライベートリポジトリにpushして、あなた専用のエージェントとして完全独立
+- フォルダを任意の作業場所へコピーし、そこで `git init` するだけでスタンドアロンのエージェントリポジトリとして即利用可能
 - 他のプロジェクトでも `.cursor/rules/` をコピーするだけでエージェント機能を導入可能
+
+## 🔧 ルール設計の流れ
+
+1. ヒアリングで要求を整理し、`{{patterns.draft_requirements}}` に記録します。
+2. Flow / Stock / Archived を基準としたフォルダ構成にユーザー承認を得るまで作業を進めません。
+3. `templates.root_dir` を自身の環境に合わせて設定し、{domain}_paths.mdc の root を展開します。
+4. 01番ルールでプロジェクト初期化（フォルダ生成・初期ドキュメント作成・初期TODO整理）を行います。
+5. 02番以降のルールは、要件に沿って順次設計・実装し、タスクリストで進捗管理します。
 
 ## 📁 生成されるエージェント構造
 
 ```
 {domain}_agent/
-├── Flow/                      # 作業中ドラフト
-│   ├── Public/               # 公開可能な作業ファイル
-│   └── Private/              # 非公開作業ファイル
+├── Flow/                      # 作業中ドラフト（日付階層で整理）
+│   └── YYYYMM/               # 月単位ディレクトリ
+│       └── YYYYMMDD/         # 日別ドラフト格納先
 ├── Stock/                     # 確定版ドキュメント
 │   └── programs/             # プログラム/プロジェクト構造
 ├── Archived/                  # アーカイブ
-│   └── keep                  # ディレクトリ構造保持用
-├── .cursor/                   # Cursor IDE設定
-│   ├── rules/                # 実行用ルール(.mdc)
-│   └── templates/            # ドキュメントテンプレート
-├── scripts/                   # 自動化スクリプト
-└── README.md                  # エージェント専用説明書
+│   └── keep                              # ディレクトリ構造保持用
+├── .cursor/                               # Cursor IDE設定
+│   ├── rules/                            # 実行用ルール(.mdc)
+│   └── templates/                        # ドキュメントテンプレート
+├── scripts/                               # 自動化スクリプト
+└── README.md                              # エージェント専用説明書
 ```
 
-Flow はドラフト作業、Stock は確定版管理、Archived は履歴・バックアップという標準的な業務フローを想定した初期構成です。ユーザーとの要件定義で別の整理方法が必要になった場合は、この階層と `{domain}_paths.mdc` のパターン定義をあわせて調整し、望むディレクトリ設計に置き換えてください。
+Flow (`Flow/YYYYMM/YYYYMMDD/{agent_dir}`) はドラフト作業、Stock は確定版ファイルをメディア種別ごとに整理する領域です。`agent_paths.mdc` の先頭にある
+
+```
+# ----
+# 0. ルートディレクトリ
+# ----
+root: "{{templates.root_dir}}/{{agent_name}}"
+```
+
+に従い、`templates.root_dir` にはエージェントフォルダを配置する実際の作業ディレクトリ（例: `/Users/you/workspace`）を設定してください。`agent_dir` には Flow 配下で利用するサブディレクトリ名（通常はエージェント名のスネークケース）を指定します。
+
+Stock の `documents` / `images` / `audio` / `videos` / `data` / `archives` ディレクトリに対応する `document_genre` 等のプレースホルダは、01〜NN ルールで扱う成果物に合わせて `{domain}_paths.mdc` の `meta.default_*` に設定し、必要に応じて差し替えてください。ユーザー要件で別の整理方法が必要な場合は、この階層と `{domain}_paths.mdc` のパターン定義をあわせて調整し、望むディレクトリ設計に置き換えてください。
 
 ## 📝 ライセンス
 
