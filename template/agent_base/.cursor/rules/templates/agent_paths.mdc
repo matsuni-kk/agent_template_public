@@ -1,0 +1,152 @@
+---
+description: 
+globs: 
+---
+# ==========================================================
+# agent_paths.mdc  ―  "すべてのルールが参照するパス辞書"
+# ==========================================================
+<!-- NOTE: 環境に合わせてパスを調整し、必要に応じて記述方法を変更してください -->
+# ・{{ }} 内は動的に置換するプレースホルダ変数
+# ・`templates.root_dir` に自身のワークスペースパスを設定し、root を派生エージェント用に展開します
+
+# ----
+# 0. ルートディレクトリ
+# ----
+root: "{{templates.root_dir}}/{{agent_name}}"
+
+# ----
+# 1. 主要ディレクトリ（相対パス）
+# ----
+dirs:
+  # ─ Flow（WIP／ドラフト／議事録など）
+  flow:               "{{root}}/Flow"  # YYYYMM/YYYYMMDD で日付管理
+  flow_templates:     "{{root}}/.cursor/templates" # テンプレート置き場をルールフォルダ内に想定
+
+  # ─ Stock（確定版ドキュメント）
+  stock:              "{{root}}/Stock"
+  stock_programs:     "{{dirs.stock}}/programs"
+  stock_default_docs: "{{dirs.stock_programs}}/core_program/projects/core_project/documents/core_genre"
+
+  # ─ アーカイブ（完了 or 旧バージョン格納）
+  archived:           "{{root}}/Archived"
+
+  # ─ ルールファイル
+  rules:              "{{root}}/.cursor/rules"
+  rules_template:     "{{dirs.rules}}/templates" # テンプレートルール群のベース
+
+  # ─ スクリプト
+  scripts:            "{{root}}/scripts" # 補助スクリプト置き場
+
+# ----
+# 2. 動的パターン
+# ----
+patterns:
+  # ---- Flow 側 ----
+  # 日付フォルダパス（年月/日付の階層構造）
+  flow_month_dir:    "{{dirs.flow}}/{{meta.year_month}}"
+  flow_day_dir:      "{{patterns.flow_month_dir}}/{{meta.today}}"
+
+  # ---- プログラム/プロジェクト構造 ----
+  stock_program_dir:  "{{dirs.stock_programs}}"
+  stock_project_dir:  "{{patterns.stock_program_dir}}/{{project}}"
+  stock_documents_dir:"{{patterns.stock_project_dir}}/documents/{{document_genre}}"
+  stock_images_dir:   "{{patterns.stock_project_dir}}/images/{{image_category}}"
+  stock_audio_dir:    "{{patterns.stock_project_dir}}/audio/{{audio_category}}"
+  stock_video_dir:    "{{patterns.stock_project_dir}}/videos/{{video_category}}"
+  stock_data_dir:     "{{patterns.stock_project_dir}}/data/{{dataset_category}}"
+  stock_archive_dir:  "{{patterns.stock_project_dir}}/archives/{{archive_category}}"
+  docs_root:          "{{patterns.stock_documents_dir}}"
+  images_root:        "{{patterns.stock_images_dir}}"
+  audio_root:         "{{patterns.stock_audio_dir}}"
+  video_root:         "{{patterns.stock_video_dir}}"
+  data_root:          "{{patterns.stock_data_dir}}"
+  archive_root:       "{{patterns.stock_archive_dir}}"
+  backlog_root:       "{{patterns.stock_project_dir}}/backlog" # Optional
+
+  project_search_glob: "{{dirs.stock_programs}}/*/{{project}}"
+  docs_search_glob: "{{patterns.stock_documents_dir}}/**/*.md"
+  images_search_glob: "{{patterns.stock_images_dir}}/**/*"
+  audio_search_glob: "{{patterns.stock_audio_dir}}/**/*"
+  video_search_glob: "{{patterns.stock_video_dir}}/**/*"
+  data_search_glob: "{{patterns.stock_data_dir}}/**/*"
+  archive_search_glob: "{{patterns.stock_archive_dir}}/**/*"
+  
+  # ---- 汎用ドキュメントパス (各エージェントで用途に応じてカスタマイズ) ----
+  # 基本的なドキュメント構造
+  docs_planning:        "{{patterns.docs_root}}/planning"
+  docs_analysis:        "{{patterns.docs_root}}/analysis"
+  docs_design:          "{{patterns.docs_root}}/design"
+  docs_implementation:  "{{patterns.docs_root}}/implementation"
+  docs_testing:         "{{patterns.docs_root}}/testing"
+  docs_deployment:      "{{patterns.docs_root}}/deployment"
+  docs_maintenance:     "{{patterns.docs_root}}/maintenance"
+  
+  # 汎用ドキュメントファイル
+  stock_project_plan:   "{{patterns.docs_planning}}/project_plan.md"
+  stock_requirements:   "{{patterns.docs_analysis}}/requirements.md"
+  stock_design_doc:     "{{patterns.docs_design}}/design_document.md"
+  stock_test_plan:      "{{patterns.docs_testing}}/test_plan.md"
+  stock_deployment_guide: "{{patterns.docs_deployment}}/deployment_guide.md"
+  stock_image_asset:    "{{patterns.images_root}}/{{asset_name}}.png"
+  stock_audio_asset:    "{{patterns.audio_root}}/{{asset_name}}.mp3"
+  stock_video_asset:    "{{patterns.video_root}}/{{asset_name}}.mp4"
+  stock_dataset_asset:  "{{patterns.data_root}}/{{asset_name}}.csv"
+  stock_archive_asset:  "{{patterns.archive_root}}/{{asset_name}}.zip"
+  
+  # ---- Flow側 ドラフトファイルパス (汎用) ----
+  draft_project_plan:   "{{patterns.flow_day_dir}}/draft_project_plan.md"
+  draft_requirements:   "{{patterns.flow_day_dir}}/draft_requirements.md"
+  draft_design_doc:     "{{patterns.flow_day_dir}}/draft_design_document.md"
+  draft_test_plan:      "{{patterns.flow_day_dir}}/draft_test_plan.md"
+  draft_meeting_notes:  "{{patterns.flow_day_dir}}/meeting_notes_{{meeting_id}}.md"
+
+  # ---- Task Management ----
+  daily_tasks_template: "{{dirs.flow_templates}}/daily_tasks_template.md"
+  weekly_review_template: "{{dirs.flow_templates}}/weekly_review_template.md"
+  daily_tasks_md:       "{{patterns.flow_day_dir}}/daily_tasks.md"
+  weekly_review_md:     "{{patterns.flow_day_dir}}/weekly_review_for_week_{{week_number}}.md" # 週番号ベース
+
+  # ---- Flow Assist ----
+  brainstorm_notes_md:  "{{patterns.flow_day_dir}}/brainstorm_notes_{{theme_slug}}.md" # テーマベース
+
+  # ---- Dev Support ----
+  script_log_md:        "{{patterns.flow_day_dir}}/script_exec_log_{{script_name}}.md"
+
+  # ---- Tool Paths ----
+  flow_to_stock_rules_mdc: "{{dirs.rules}}/flow_to_stock_rules.mdc"
+  update_master_script: "{{dirs.scripts}}/update_master.py"
+  scaffold_project_script: "{{root}}/scaffold_project.sh"
+  execute_flow_to_stock_script: "{{dirs.scripts}}/flow_to_stock.sh"
+
+  # ---- Rule Maintenance (汎用) ----
+  rule_maintenance_log: "{{patterns.flow_day_dir}}/rule_maintenance_{{meta.today}}.md"
+  rule_skeleton_out: "{{dirs.rules}}/{{nn}}_{{meta.domain}}_{{function_code}}.mdc"
+  rule_check_log: "{{patterns.flow_day_dir}}/rule_check_{{meta.today}}.md"
+
+# ----
+# 3. 便利変数
+# ----
+meta:
+  today:              "{{env.NOW:date:YYYY-MM-DD}}"
+  year_month:         "{{env.NOW:date:YYYYMM}}"
+  year:               "{{env.NOW:date:YYYY}}"
+  month:              "{{env.NOW:date:MM}}"
+  week_number:        "{{env.NOW:date:WW}}" # 週番号
+  iso_week_end:       "{{env.NOW:date:YYYY-'W'WW}}"
+  agent_name:         "{{env.AGENT_NAME}}" # エージェント名（例: babok_agent, knowledge_agent）
+  domain:             "{{env.DOMAIN}}"      # ドメイン識別子（例: babok, knowledge, legal）
+  timestamp:          "{{env.NOW:datetime:YYYY-MM-DD HH:mm:ss}}"
+  program:            "{{env.PROGRAM}}"
+  project:            "{{env.PROJECT}}"
+  document_genre:     "{{env.DOCUMENT_GENRE}}"
+  image_category:     "{{env.IMAGE_CATEGORY}}"
+  audio_category:     "{{env.AUDIO_CATEGORY}}"
+  video_category:     "{{env.VIDEO_CATEGORY}}"
+  dataset_category:   "{{env.DATASET_CATEGORY}}"
+  archive_category:   "{{env.ARCHIVE_CATEGORY}}"
+  # 後方互換のため既存キーも保持
+  program_id:         "{{env.PROGRAM_ID}}"
+  project_id:         "{{env.PROJECT_ID}}"
+  meeting_id:         "" # 会議IDなど、動的に設定される値
+  theme_slug:         "" # アイデア発散テーマのスラッグ
+  script_name:        "" # 実行スクリプト名

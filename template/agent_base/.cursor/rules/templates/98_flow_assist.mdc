@@ -1,0 +1,216 @@
+---
+description: Flow内ブレインストーミング支援システム
+globs:
+---
+# ==========================================================
+# 98_flow_assist.mdc - Flow発散支援システム
+# ==========================================================
+
+path_reference: "agent_paths.mdc"
+
+# ======== プロンプト（目的と使い方） ========
+prompt_purpose: |
+  本ルールはFlow段階でのブレインストーミングを構造化し、短時間で実行可能なアイデアリストと優先候補を整理します。
+
+prompt_why_questions: |
+  セッションテーマ・目的・参加者・手法・識別子を揃えることで、ドキュメント名の衝突や論点ブレを避け、後続評価で参照可能なメタ情報を確保します。
+
+prompt_why_templates: |
+  発散ノートを標準テンプレート化することで、アイデアの比較・グルーピング・次アクションを一画面で把握でき、Stock移行時も形式を維持できます。
+
+prompt_principles: |
+  - セッションの背景と目的を最初に明記し、曖昧な論点を残さない。
+  - アイデアは具体的な価値・留意点をセットで記録し、再利用性を高める。
+  - セッション識別子は英小文字+_で統一し、paths定義と整合させる。
+  - 未記載情報は明示し、追記時はタイムスタンプを更新する。
+
+# ======== Flow Assist統合エージェント ========
+
+system_capabilities:
+  session_design: "テーマ・目的・制約を整理し、最適な発散フレームを提示"
+  prompt_generation: "アイデア拡張のための問いかけや逆視点を自動生成"
+  idea_structuring: "発散アイデアをカテゴリ別に整理し、比較しやすく整形"
+  prioritization_support: "評価軸を提示し、有望アイデアの抽出を支援"
+  action_linkage: "次アクションや検証タスクに直結するチェックリストを生成"
+  session_logging: "セッションログをFlowの日付ディレクトリに保存し、Stock移行の準備を整える"
+
+# ======== Phase 1: 設計フェーズ ========
+
+phase_1_description: |
+  セッションテーマ、目的、参加者、制約条件を明確にし、pathsにおける保存先と識別子を確定します。完了条件は発散に必要な情報が揃っていることです。
+
+# ======== Phase 2: セッションフェーズ ========
+
+phase_2_description: |
+  設計フェーズで定義した枠組みに従い、アイデアを収集・構造化します。有望候補をハイライトし、次の検証ステップを定義します。完了条件はアイデアリストとアクションアイテムがテンプレートに反映されていることです。
+
+# ======== 統合オプション質問 ========
+
+flow_assist_questions:
+  - category: "セッション概要"
+    items:
+      - key: "session_theme"
+        prompt: "セッションの主要テーマ："
+        type: "text"
+        required: true
+        placeholder: "新規顧客獲得アイデア"
+      - key: "session_purpose"
+        prompt: "セッションの目的："
+        type: "multiline"
+        required: true
+        placeholder: "実行候補3案を抽出する"
+      - key: "participants"
+        prompt: "参加者（任意）："
+        type: "text"
+        required: false
+        placeholder: "個人利用"
+      - key: "technique"
+        prompt: "利用する発散手法："
+        type: "text"
+        required: false
+        placeholder: "SCAMPER"
+      - key: "theme_slug"
+        prompt: "セッション識別子（英小文字+_）："
+        type: "text"
+        required: true
+        placeholder: "new_customer_ideas"
+  - category: "評価軸"
+    items:
+      - key: "selection_criteria"
+        prompt: "アイデア評価基準（任意、箇条書き）："
+        type: "multiline"
+        required: false
+        placeholder: "- 実現可能性\n- 3ヶ月以内の効果"
+      - key: "session_notes"
+        prompt: "事前に共有された情報や制約："
+        type: "multiline"
+        required: false
+
+# ======== Flow Assistプロセス ========
+
+flow_assist_steps:
+  1_prepare:
+    name: "セッション設計"
+    phases:
+      - "テーマと目的を確認し、制約と評価軸を整理"
+      - "paths上の保存先とファイル命名を決定"
+      - "必要な資料や既存データを収集"
+    quality_standards:
+      - "テーマと目的が1行で明記されている"
+      - "識別子がpathsの命名規則に適合"
+      - "評価軸が未記載の場合は"未設定"と表示"
+
+  2_facilitation:
+    name: "発散進行"
+    phases:
+      - "問いかけテンプレートを使い多角的にアイデアを収集"
+      - "アイデアをカテゴリ化し、重複を整理"
+      - "優先アイデアと次アクションを決定"
+    integration_points:
+      - "Flow日付ディレクトリのセッションノート"
+      - "Stock/Programs の検証計画"
+      - "paths: brainstorm_notes_{{theme_slug}}"
+
+# ======== Flow Assistワークフロー ========
+
+flow_assist_workflow:
+  phase_1:
+    - name: "セッションノート作成"
+      action: "create_markdown_file"
+      description: "Flow日付ディレクトリにブレインストーミングノートを作成"
+      mandatory: true
+  phase_2:
+    - name: "質問実行"
+      action: "call 98_flow_assist.mdc => flow_assist_questions"
+      description: "必要情報を取得"
+      mandatory: true
+
+# ======== テンプレート ========
+
+flow_assist_template: |
+  # アイデア発散ノート: {{session_theme}}
+  **セッションID:** {{theme_slug}}
+  **日時:** {{meta.today}}
+  **目的:** {{session_purpose}}
+  **参加者:** {{participants}}
+  **手法:** {{technique}}
+
+  ---
+  ## セッションメモ
+  {{session_notes}}
+
+  ## アイデアリスト
+  1. アイデア1
+     - 詳細:
+     - 期待価値:
+     - 懸念事項:
+  2. アイデア2
+     - 詳細:
+     - 期待価値:
+     - 懸念事項:
+  3. アイデア3
+     - 詳細:
+     - 期待価値:
+     - 懸念事項:
+
+  ## 評価基準
+  {{selection_criteria}}
+
+  ## 有望アイデア
+  - 候補A:
+  - 候補B:
+
+  ## 次のステップ
+  - [ ] 詳細検証
+  - [ ] 関係者レビュー
+  - [ ] プロトタイプ準備
+
+  ---
+  **作成者:** {{meta.user}}
+  **保存先:** {{patterns.brainstorm_notes_md}}
+
+# ======== エラーハンドリング ========
+
+error_handling:
+  missing_slug:
+    message: "セッション識別子が未入力です。英小文字+_で指定してください。"
+    recovery_actions:
+      - "theme_slug を再入力"
+      - "paths定義と照合"
+  duplicate_file:
+    message: "同一識別子のノートが既に存在します。"
+    recovery_actions:
+      - "既存ノートを確認し更新か新規か決定"
+      - "識別子を変更して保存"
+
+# ======== 設定 ========
+
+flow_assist_settings:
+  default_destination: "{{patterns.brainstorm_notes_md}}"
+  default_technique: "自由発想"
+  idea_slots: 10
+
+# ======== 統合ポイント ========
+
+integration_points:
+  research_library:
+    trigger: "関連調査資料の更新"
+    action: "セッションノートへ参照リンクを追加"
+  evaluation_tracker:
+    trigger: "Stock評価プラン作成"
+    action: "優先アイデアを自動で初期入力"
+
+# ======== 品質保証 ========
+
+quality_assurance:
+  mandatory_checks:
+    - "セッションテーマと目的が記載されている"
+    - "アイデアが最低3件記録されている"
+    - "次のステップが定義されている"
+
+# ======== 成功メトリクス ========
+
+success_metrics:
+  - "セッション完了からノート作成までの時間 < 15分"
+  - "優先アイデアの実行率 > 50%"
+  - "再利用されたアイデア数/セッション >= 2"

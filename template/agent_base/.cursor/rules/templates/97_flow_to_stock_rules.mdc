@@ -1,0 +1,216 @@
+---
+description: Flow→Stock移行システムの標準ルール
+globs:
+---
+# ==========================================================
+# 97_flow_to_stock_rules.mdc - Flow→Stock移行システム
+# ==========================================================
+
+path_reference: "agent_paths.mdc"
+
+# ======== プロンプト（目的と使い方） ========
+prompt_purpose: |
+  本ルールはFlow配下のドラフト資産を検証後にStockへ確定移行し、監査可能な最終成果物を即時に提供します。
+
+prompt_why_questions: |
+  ドキュメント種別・ドラフトパス・確定先・移行条件を揃えて重複移行や誤上書きを防ぎ、必要な承認有無と履歴記録を判断するために質問を行います。
+
+prompt_why_templates: |
+  標準テンプレートにより移行ログを一元管理し、差戻し時も同じフォーマットで再実行できるようにします。
+
+prompt_principles: |
+  - Flowから移行する前に受領確認と品質チェック結果を必ず明記する。
+  - Stockへの書き換えは追記方式で行い、証跡ログを同時保存する。
+  - ドメイン固有パターンがない場合は先にpathsへ追加し、整合性を保つ。
+  - 失敗時はステータスを残し、再実行条件をログに記録する。
+
+# ======== Flow to Stock統合エージェント ========
+
+system_capabilities:
+  draft_inventory: "Flow配下のドラフト一覧と最新更新日時を照合して移行候補を抽出"
+  readiness_validation: "必須チェックリストと承認結果を確認し、移行可否を判定"
+  path_translation: "ドラフトパスをStockパターンへマッピングし、欠落時は警告"
+  transfer_execution: "スクリプト呼び出しで移行処理を実行し、成功/失敗を把握"
+  audit_logging: "移行ログをテンプレートで生成し、担当・日時・変更点を記録"
+  rollback_support: "差戻しや再実行のためのリカバリ手順と再試行条件を提示"
+
+# ======== Phase 1: 準備フェーズ ========
+
+phase_1_description: |
+  対象ドキュメントの種別・ドラフトパス・Stockパス・承認状況を確認します。paths未定義の場合は事前に追加し、移行チェックリストを合意します。完了条件は移行メタ情報が揃っていることです。
+
+# ======== Phase 2: 移行フェーズ ========
+
+phase_2_description: |
+  準備フェーズで確定した設定に沿って移行スクリプトを実行し、成果物をStockへ保存します。結果は移行ログとして残し、失敗時は原因と再試行条件を記録します。完了条件はStock側での決裁者確認が済んでいることです。
+
+# ======== 統合オプション質問 ========
+
+flow_to_stock_questions:
+  - category: "移行ターゲット"
+    items:
+      - key: "document_name"
+        prompt: "確定移行するドキュメント名："
+        type: "text"
+        required: true
+        placeholder: "ビジネスケース"
+      - key: "draft_pattern"
+        prompt: "ドラフトファイルのパターン（pathsキーまたはフルパス）："
+        type: "text"
+        required: true
+        placeholder: "{{patterns.draft_biz_case}}"
+      - key: "stock_pattern"
+        prompt: "Stockファイルのパターン（pathsキーまたはフルパス）："
+        type: "text"
+        required: true
+        placeholder: "{{patterns.stock_biz_case}}"
+  - category: "品質確認"
+    items:
+      - key: "approval_status"
+        prompt: "承認状況（例: 承認済み/承認不要/差戻し）："
+        type: "text"
+        required: true
+        placeholder: "承認済み"
+      - key: "qa_checklist"
+        prompt: "完了チェックリスト（箇条書きで入力）："
+        type: "multiline"
+        required: true
+        placeholder: "- レビュー完了\n- 参照リンク更新"
+  - category: "ログ設定"
+    items:
+      - key: "responsible"
+        prompt: "移行担当者："
+        type: "text"
+        required: true
+        placeholder: "佐藤"
+      - key: "note"
+        prompt: "特記事項（任意）："
+        type: "multiline"
+        required: false
+
+# ======== Flow to Stockプロセス ========
+
+flow_to_stock_steps:
+  1_validation:
+    name: "移行準備"
+    phases:
+      - "ドラフトとStockのパターンを照合し、空欄がないことを確認"
+      - "承認記録とチェックリスト結果をレビュー"
+      - "移行ログのメタ情報を準備"
+    quality_standards:
+      - "pathsに両パターンが存在し、命名規則に合致"
+      - "承認ステータスとレビュー結果が更新済み"
+      - "差戻し歴がある場合は解消記録がある"
+
+  2_transfer:
+    name: "移行実行"
+    phases:
+      - "Flow→Stock移行スクリプトを実行"
+      - "出力先を検証し、バージョン番号とタイムスタンプを更新"
+      - "移行ログを作成し、関係者へ共有"
+    integration_points:
+      - "{{ execute_flow_to_stock_script }}"
+      - "Stockディレクトリの最終更新情報"
+      - "Flow日付ディレクトリの差戻しメモ"
+
+# ======== Flow to Stockワークフロー ========
+
+flow_to_stock_workflow:
+  phase_1:
+    - name: "移行要件確認"
+      action: "validate_input"
+      description: "入力項目が揃っているかを検証"
+      mandatory: true
+  phase_2:
+    - name: "移行処理実行"
+      action: "execute_shell"
+      description: "{{ execute_flow_to_stock_script }} を実行"
+      mandatory: true
+    - name: "移行ログ作成"
+      action: "create_markdown_file"
+      description: "移行結果ログをFlow日付ディレクトリへ保存"
+      mandatory: true
+
+# ======== テンプレート ========
+
+flow_to_stock_template: |
+  # Flow→Stock移行ログ - {{document_name}}
+
+  **移行日:** {{meta.timestamp}}
+  **担当:** {{responsible}}
+  **ドラフト:** {{draft_pattern}}
+  **Stock:** {{stock_pattern}}
+  **承認状況:** {{approval_status}}
+
+  ## チェックリスト
+  {{qa_checklist}}
+
+  ## 特記事項
+  {{note}}
+
+  ---
+  - 実行スクリプト: {{ execute_flow_to_stock_script }}
+  - 記録者: {{meta.user}}
+
+# ======== エラーハンドリング ========
+
+error_handling:
+  file_not_found:
+    message: "ドラフトまたはStockファイルが見つかりません。paths設定を確認してください。"
+    recovery_actions:
+      - "agent_paths.mdc を更新し、再実行"
+      - "ドラフトファイルの存在を確認"
+  permission_denied:
+    message: "ファイルの書き込み権限が不足しています。"
+    recovery_actions:
+      - "実行ユーザーの権限を確認"
+      - "必要に応じて管理者へエスカレーション"
+
+# ======== 設定 ========
+
+flow_to_stock_settings:
+  execute_command: "{{ execute_flow_to_stock_script }}"
+  log_destination: "{{patterns.flow_day_dir}}/flow_to_stock_log.md"
+  predefined_transfers:
+    ba_plan: "{{patterns.draft_ba_plan}} -> {{patterns.stock_ba_plan}}"
+    stakeholder_register: "{{patterns.draft_stakeholder_register}} -> {{patterns.stock_stakeholder_register}}"
+    elicitation_plan: "{{patterns.draft_elicitation_plan}} -> {{patterns.stock_elicitation_plan}}"
+    elicitation_results: "{{patterns.draft_elicitation_results}} -> {{patterns.stock_elicitation_results}}"
+    rlcm_plan: "{{patterns.draft_rlcm_plan}} -> {{patterns.stock_rlcm_plan}}"
+    traceability_matrix: "{{patterns.draft_traceability_matrix}} -> {{patterns.stock_traceability_matrix}}"
+    as_is_to_be_analysis: "{{patterns.draft_as_is_to_be_analysis}} -> {{patterns.stock_as_is_to_be_analysis}}"
+    biz_case: "{{patterns.draft_biz_case}} -> {{patterns.stock_biz_case}}"
+    req_spec: "{{patterns.draft_req_spec}} -> {{patterns.stock_req_spec}}"
+    design_doc: "{{patterns.draft_design_doc}} -> {{patterns.stock_design_doc}}"
+    acceptance_criteria: "{{patterns.draft_acceptance_criteria}} -> {{patterns.stock_acceptance_criteria}}"
+    dmaic_charter: "{{patterns.draft_dmaic_charter}} -> {{patterns.stock_dmaic_charter}}"
+    sipoc: "{{patterns.draft_sipoc}} -> {{patterns.stock_sipoc}}"
+    vsm: "{{patterns.draft_vsm}} -> {{patterns.stock_vsm}}"
+    control_plan: "{{patterns.draft_control_plan}} -> {{patterns.stock_control_plan}}"
+    bpmn_as_is: "{{patterns.draft_bpmn_as_is}} -> {{patterns.stock_bpmn_as_is}}"
+    bpmn_to_be: "{{patterns.draft_bpmn_to_be}} -> {{patterns.stock_bpmn_to_be}}"
+
+# ======== 統合ポイント ========
+
+integration_points:
+  flow_directory:
+    trigger: "Flow内ドラフト更新"
+    action: "移行候補リストを更新"
+  stock_repository:
+    trigger: "移行完了"
+    action: "版管理・通知を実施"
+
+# ======== 品質保証 ========
+
+quality_assurance:
+  mandatory_checks:
+    - "承認ステータスが承認済みまたは承認不要である"
+    - "チェックリスト項目がすべて完了済み"
+    - "ログに担当者とタイムスタンプが記載されている"
+
+# ======== 成功メトリクス ========
+
+success_metrics:
+  - "移行失敗率 < 5%"
+  - "移行ログ作成遅延 < 10分"
+  - "承認済みドラフトの移行滞留日数 < 2日"

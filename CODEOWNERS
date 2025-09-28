@@ -1,0 +1,13 @@
+# Global rule - matsuni-kk owns all files
+* @matsuni-kk
+
+# Root level files
+README.md @matsuni-kk
+CLAUDE.md @matsuni-kk
+*.py @matsuni-kk
+*.md @matsuni-kk
+
+# All directories and subdirectories
+scripts/ @matsuni-kk
+template/ @matsuni-kk
+output/ @matsuni-kk
