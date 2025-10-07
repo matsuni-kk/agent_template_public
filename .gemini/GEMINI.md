@@ -37,14 +37,14 @@ design_principles:
 # =========================
 
 agent_creation_tasks:
-  description: "ヒアリングで蓄積した要件と合意事項を基にエージェント作成工程を管理する進捗タスクリスト。ユーザーと共有し、必要に応じて項目を追加・削除する。初回の作成支援時のみ本テンプレートリポジトリの Flow 階層（例: Flow/{{agent_name}}_{{agent_info.domain}}_agent_build/{{meta.year_month}}/{{meta.today}}_agent_creation_tasklist.md）に保存し、要件定義ファイルと逐次同期する。外部タスク機能を併用する場合でも、要件定義ファイルは必ず create_markdown_file で生成・更新することが必須。生成後のエージェントが独立運用する際は、このタスクリストは使用せず、各リポジトリ固有のフローで管理する。"
+  description: "ヒアリングで蓄積した要件と合意事項を基にエージェント作成工程を管理する進捗タスクリスト。ユーザーと共有し、必要に応じて項目を追加・削除する。保存場所は日次Flow階層に統一（例: Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}}/{{meta.today}}_agent_creation_tasklist.md）。要件定義ファイルは常に create_markdown_file で生成・更新し、以降の作業で参照・同期する。生成後のエージェントが独立運用する際も同一パス方針を維持する。"
   default_items:
     - id: "update_tasklist_file"
-      detail: "作業開始直後に Flow/{{agent_name}}_{{agent_info.domain}}_agent_build/{{meta.year_month}}/{{meta.today}}_agent_creation_tasklist.md を create_markdown_file で生成し、以降の工程管理と承認事項を記録する。生成場所はテンプレートリポジトリ側に限定し、派生エージェント配下には置かない。"
+      detail: "作業開始直後に Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}}/{{meta.today}}_agent_creation_tasklist.md を create_markdown_file で生成し、以降の工程管理と承認事項を記録する。保存場所は日次Flow配下に統一する。"
     - id: "create_requirements_file"
       detail: "タスクリスト生成と同時に {{patterns.flow_day_dir}}/draft_requirements.md（例: Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}}/draft_requirements.md）を create_markdown_file で作成し、ヒアリング結果と合意事項の記録先を確保する。外部タスク機能利用時も必須とし、以降の作業で常に参照・更新する。"
     - id: "sync_tasklist_with_requirements"
-      detail: "各タスク完了時に Flow/{{agent_name}}_{{agent_info.domain}}_agent_build/{{meta.year_month}}/{{meta.today}}_agent_creation_tasklist.md と {{patterns.draft_requirements}} の双方へ反映内容・判断・未決事項を追記し、ステータスと要件メモの差分を残さないよう同期する。"
+      detail: "各タスク完了時に Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}}/{{meta.today}}_agent_creation_tasklist.md と {{patterns.draft_requirements}} の双方へ反映内容・判断・未決事項を追記し、ステータスと要件メモの差分を残さないよう同期する。"
     - id: "configure_root_path"
       detail: "`{domain}_paths.mdc` の `root: \"{{templates.root_dir}}/{{agent_name}}\"` を、実際にエージェントフォルダを配置するフルパス（例: `/Users/you/workspace/{{agent_info.domain}}_agent`）へ書き換える。タスクリストに設定したパスを記録し、# ---- 0. ルートディレクトリ コメントに同じ値を残す。"
     - id: "collect_requirements"
@@ -58,7 +58,7 @@ agent_creation_tasks:
     - id: "rule_customization"
       detail: "01番以降のルール整備を終えてから 00_master_rules.mdc と {domain}_paths.mdc を更新し、マスタートリガーとパス定義を反映する。"
     - id: "finalize_master_and_paths"
-      detail: "すべての 01〜NN ルールで保存パターンとトリガーが確定した最終局面で {domain}_paths.mdc と 00_master_rules.mdc を一括で整備し、Flow/{{agent_name}}_{{agent_info.domain}}_agent_build タスクリストに完了記録を残す。"
+      detail: "すべての 01〜NN ルールで保存パターンとトリガーが確定した最終局面で {domain}_paths.mdc と 00_master_rules.mdc を一括で整備し、Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}} タスクリストに完了記録を残す。"
     - id: "cleanup_sample_rules"
       detail: "テンプレートコピー後に残ったサンプルルールファイル（01_sample_*.mdc など）を削除する。"
     - id: "post_completion_choice"
@@ -74,11 +74,11 @@ agent_creation_workflow:
         purpose: "スクリプトとテンプレートを用いてルール・パス・ドラフトを整備する。"
       - order: 3
         name: "Validation"
-        purpose: "`python3 scripts/validate_rules.py` で構文・パスの整合を確認し、エラーを修正したうえで結果をログ化する。"
+        purpose: "`scripts/validate_rules.py` で構文・パスの整合を確認し、エラーを修正したうえで結果をログ化する。"
       - order: 4
         name: "Release"
         purpose: "バリデーション結果を反映した状態でエージェントを運用に移行するか、追加改善を計画するかを決定する。"
-    final_adjustment_note: ".cursor/rules/ で最終調整を行い、Flow→Stock移行を準備する。Flow / Stock / Archived 以外の構成が必要な場合は、この段階でディレクトリと `{domain}_paths.mdc` の同期を確認し、合意した階層に揃える。"
+    final_adjustment_note: "output/{{agent_info.domain}}_agent/.cursor/rules/ で最終調整を行い、Flow→Stock移行を準備する。Flow / Stock / Archived 以外の構成が必要な場合は、この段階でディレクトリと `{domain}_paths.mdc` の同期を確認し、合意した階層に揃える。"
   scenarios:
     - id: "scenario_standard"
       condition: "初回ヒアリングからエージェント生成までを一気通貫で進める標準フロー"
@@ -86,10 +86,10 @@ agent_creation_workflow:
         - order: 1
           name: "ヒアリング準備"
           tasks:
-            - "作業開始直後に create_markdown_file を用いて Flow/{{agent_name}}_{{agent_info.domain}}_agent_build/{{meta.year_month}}/{{meta.today}}_agent_creation_tasklist.md と {{patterns.draft_requirements}} を生成し、初回ヒアリング内容と承認事項の記録基盤を整える。"
+            - "作業開始直後に create_markdown_file を用いて Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}}/{{meta.today}}_agent_creation_tasklist.md と {{patterns.draft_requirements}} を生成し、初回ヒアリング内容と承認事項の記録基盤を整える。"
             - "{{patterns.flow_day_dir}}/agent_discovery_brief.md を作成し、課題・対象ユーザー・期待成果を整理する。"
             - "既存資料があれば gather_existing_info を実行し、参照元リンクと取得日時を記録する。"
-            - "要件定義と並行して関連ドメインの業界標準フレームワークを Web検索・文献調査で必ず確認し、出典と日時を {{patterns.draft_requirements}} に記録する。"
+            - "関連ドメインの業界標準フレームワークを確認し、Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}}/framework_research.md を作成・記入する（出典URL・取得日時・要点・適用方針）。完了後、タスクリストに framework_research_done=true を記録する。未完了の場合は次工程へ進まない。"
         - order: 2
           name: "要件定義セッション"
       tasks:
@@ -109,7 +109,7 @@ agent_creation_workflow:
           tasks:
             - "目的・主要利用者・成果物・ドメイン用語が確定しているか確認する。"
             - "要件とフォルダ構成への承認が得られているか確認し、未承認の場合はこのステップで調整を完了させる。"
-            - "scripts/enhanced_generate_agent.py の引数（--agent-name, --domain, --description）を確定する。"
+            - "scripts/enhanced_generate_agent.py を必ず使用して生成する（引数: --agent-name, --domain, --description）。"
             - "output/{agent_name}_agent/ が既存プロジェクトと競合しないことを確認する。"
             - "Flow / Stock / Archived を初期構成として案内し、この構成でドキュメント管理を進めてよいかユーザーに確認する。別構成案があればその要件を整理しタスクリストへ登録する。"
             - "フォルダ構成やエージェント要件について承認が得られない場合は、01_initialization で生成するディレクトリが最初のアクションになることを説明し承認を得る。"
@@ -118,7 +118,7 @@ agent_creation_workflow:
           command:
             language: "bash"
             snippet: |
-              python scripts/enhanced_generate_agent.py --agent-name "Movie" --domain "movie" --description "映画調査・レビュー・サジェストエージェント"
+              scripts/enhanced_generate_agent.py --agent-name "Movie" --domain "movie" --description "映画調査・レビュー・サジェストエージェント"
         - order: 6
           name: "生成直後の必須作業"
           tasks:
@@ -128,13 +128,13 @@ agent_creation_workflow:
             - "`templates.root_dir` および `root: \"{{templates.root_dir}}/{{agent_name}}\"` が実行環境の出力先を指すよう更新し、設定値をタスクリストに記録する。"
             - "要件定義で合意したフォルダ構成を {domain}_paths.mdc のコメントにメモし、保存先キーは 01〜ルールの確定後に本編集することを宣言する。"
             - "Stock 配下に `programs/{{project}}/documents/{{document_genre}}/` と `programs/{{project}}/images/{{image_category}}/` を初期生成（例: {{patterns.stock_documents_dir}} / {{patterns.stock_images_dir}}）し、エージェント要件に合わせてジャンルや画像カテゴリを柔軟に設定できる箱を整備する。"
-            - "生成済みの Flow/{{agent_name}}_{{agent_info.domain}}_agent_build/{{meta.year_month}}/{{meta.today}}_agent_creation_tasklist.md に root設定や確認事項を追記し、進捗管理を継続する。"
+            - "生成済みの Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}}/{{meta.today}}_agent_creation_tasklist.md に root設定や確認事項を追記し、進捗管理を継続する。"
             - "作成済み {{patterns.draft_requirements}} にヒアリング内容と仮設計を逐次追記する。"
             - "01_{domain}_initialization.mdc から順に NN_{domain}_*.mdc を整備し、質問・テンプレート・アクション・出力パターンを確定させる。"
             - "02番以降のルールは初期化完了後に要件へ沿って順次設計・実装する計画を立て、タスクリストへ反映する。"
             - "02番以降で扱う成果物ごとに、保存パターンを 01〜NN ルールで確定させてから `{domain}_paths.mdc` の patterns セクションへ追加する。"
             - "01〜NN が揃った段階で 00_master_rules.mdc と {domain}_paths.mdc をまとめて更新し、説明・globs・master_triggers・パス定義を最終反映する。"
-            - "99_rule_maintenance.mdc のログ/スケルトン/タスクリスト参照パターンを生成エージェントの Flow/Stock 構造に合わせて編集し、対応キーを {domain}_paths.mdc に追加する（Flow/{{agent_name}}_{{agent_info.domain}}_agent_build の参照はここで除去する）。"
+            - "99_rule_maintenance.mdc のログ/スケルトン/タスクリスト参照パターンを生成エージェントの Flow/Stock 構造に合わせて編集し、対応キーを {domain}_paths.mdc に追加する（旧パスの参照はここで除去する）。"
             - "master_triggers を含むマスタールール全体の整形・不要トリガー削除・番号整合を完了させてから次工程に進む。"
             - "97_flow_to_stock_rules.mdc / 98_flow_assist.mdc / 99_rule_maintenance.mdc を対象エージェントのパス・質問・運用プロセスで上書きする。"
             - "テンプレートに同梱されているサンプルルール（01_sample_*.mdc 等）が残っている場合は、このタイミングで削除する。"
@@ -142,14 +142,14 @@ agent_creation_workflow:
         - order: 7
           name: "バリデーション実行"
           tasks:
-            - "output/{{agent_info.domain}}_agent/ に移動し、`python3 scripts/validate_rules.py` を実行してエラー内容を確認する。"
+            - "output/{{agent_info.domain}}_agent/ に移動し、` scripts/validate_rules.py` を実行してエラー内容を確認する。"
             - "検証結果を {{patterns.rule_check_log}} に記録し、必要な修正があれば該当ルールを更新する。"
-            - "修正後は再度 `python3 scripts/validate_rules.py` を実行し、エラー解消状況をログに追記する。"
+            - "修正後は再度 `scripts/validate_rules.py` を実行し、エラー解消状況をログに追記する。"
         - order: 8
           name: "改善タスク整理"
           tasks:
             - "検証結果とヒアリングメモを突き合わせ、{{patterns.backlog_root}} 等の管理票へ改善タスクを登録する。"
-            - "重要な判断・未決事項を Flow/{{agent_name}}_{{agent_info.domain}}_agent_build/{{meta.year_month}}/{{meta.today}}_agent_creation_tasklist.md と {{patterns.draft_requirements}} の双方へ同期する。"
+            - "重要な判断・未決事項を Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}}/{{meta.today}}_agent_creation_tasklist.md と {{patterns.draft_requirements}} の双方へ同期する。"
             - "必要に応じて 00_master_rules.mdc や NN_{domain}_{function}.mdc を更新し、変更理由と反映日をコメントに残す。"
         - order: 9
           name: "完了判定と運用移行"
@@ -175,15 +175,15 @@ agent_creation_workflow:
       - id: "feedback_actions"
         detail: "評価・改善タスク・完了後の運用方針確認まで実施したか。"
       - id: "validation_log_created"
-        detail: "`python3 scripts/validate_rules.py` を実行し、結果を {{patterns.rule_check_log}} に記録したか。"
+        detail: "` scripts/validate_rules.py` を実行し、結果を {{patterns.rule_check_log}} に記録したか。"
       - id: "framework_research_logged"
-        detail: "業界標準フレームワークの調査結果と出典を {{patterns.draft_requirements}} に記録したか。"
+        detail: "Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}}/framework_research.md を作成・記入し、タスクリストに framework_research_done=true を記録したか。未完了なら次工程へ進まない。"
   feedback_cycle:
     steps:
       - id: "validation_script"
         name: "ルールバリデーション"
         tasks:
-          - "出力されたエージェントフォルダ（例: `output/{{agent_info.domain}}_agent/`）に移動し、`scripts/validate_rules.py` を実行して結果を確認する。"
+      - "出力されたエージェントフォルダ（例: `output/{{agent_info.domain}}_agent/`）に移動し、` scripts/validate_rules.py` を実行して結果を確認する。"
           - "出力内容を {{patterns.rule_check_log}} に記録し、エラーが出た場合は該当ファイルを修正したうえで再実行する。"
       - id: "improvement_tasks"
         name: "改善タスク管理"
@@ -233,37 +233,45 @@ agent_creation_workflow:
 
 
 # =========================
-# 生成されるエージェント構造
+# 生成されるエージェント構造（配置の統一）
 # =========================
 
 
-{domain}_agent/
+repo_root/                                 # このリポジトリ直下
 ├── Flow/                                  # 作業中ドラフト（年月日＋エージェント名で階層管理）
 │   └── YYYYMM/
 │       └── YYYYMMDD/
-│           └── {agent_dir}/               # エージェント固有サブディレクトリ（例: music_agent）
+│           └── {agent_dir}/               # 例: vtuber_agent
 │               ├── draft_requirements.md  # 要件定義（初期必須）
 │               ├── draft_*.md             # 01〜ルールで生成されるドラフト
 │               └── rule_check_*.md        # 構造チェックログなど
-├── Stock/                                 # 確定版ドキュメント
-│   └── programs/
-│       └── {project}/                     # エージェント固有プロジェクト
-│           ├── documents/{document_genre}/  # テキスト・レポート系（例: weekly_menu）
-│           ├── images/{image_category}/      # 画像資産（例: dish_photos）
-│           ├── audio/{audio_category}/       # 音声メモ等
-│           ├── videos/{video_category}/      # 動画クリップ
-│           ├── data/{dataset_category}/      # データセット／CSV 等
-│           └── archives/{archive_category}/  # アーカイブ化済み成果物
-├── Archived/                              # アーカイブ（履歴保管）
-│   └── keep                              # ディレクトリ構造保持用
-├── .cursor/                               # Cursor IDE設定
-│   ├── rules/                            # 実行用ルール(.mdc)
-│   └── templates/                        # ドキュメントテンプレート
-├── scripts/                               # 自動化スクリプト
-└── README.md                              # エージェント専用説明書
+└── output/
+    └── {domain}_agent/                    # エージェント本体（確定物＋ルール）
+        ├── .cursor/
+        │   ├── rules/                     # .mdc追加先（新規ルールはここへ追加・編集）
+        │   │   ├── 00_master_rules.mdc    # ドメイン用マスター（トリガー定義・編集先）
+        │   │   ├── {domain}_paths.mdc     # パス辞書（例: vtuber_paths.mdc）
+        │   │   ├── 01_{domain}_initialization.mdc
+        │   │   ├── 02_{domain}_{function}.mdc
+        │   │   └── ...                    # 03〜89_{domain}_{function}.mdc を追加
+        │   └── templates/
+        ├── Stock/                         # 確定版ドキュメント
+        │   └── programs/{project}/
+        │       ├── documents/{document_genre}/
+        │       ├── images/{image_category}/
+        │       ├── audio/{audio_category}/
+        │       ├── videos/{video_category}/
+        │       ├── data/{dataset_category}/
+        │       └── archives/{archive_category}/
+        ├── Archived/                      # アーカイブ（履歴保管）
+        │   └── keep
+        ├── scripts/
+        └── README.md
 
-標準で Flow（ドラフト作業）→Stock（確定版）→Archived（履歴保存）の三層を採用するのは、業務プロセスの「案出し→レビュー→確定→保管」という流れを想定しているためです。ユーザーとの要件定義で異なる文書管理フローが求められた場合は、この構成と `{domain}_paths.mdc` のパターン定義をあわせて調整し、希望する階層へ置き換えてください。
-各エージェントではこの標準構造を出発点にしつつ、要件に応じたディレクトリやパターンの拡張・削減を行い統一性を保ちます。
+方針
+- Flowは常にリポジトリ直下の`Flow/`で日次管理する（要件定義・ドラフト・検証ログを含む）。
+- ルール(.mdc)は常に`output/{domain}_agent/.cursor/rules/`で作成・編集する（テンプレ側との混在禁止）。
+- Stock/Archivedは`output/{domain}_agent/`配下に保持し、Flow確定後に移行する。
 
 
 # =========================
@@ -304,9 +312,9 @@ quick_reference:
       name: "Phase 1: 設計準備"
       focus: "ドメイン分析・要件定義・機能設計を整理し、成功基準とKPIを合意する。root設定(`templates.root_dir`/`root: \"{{templates.root_dir}}/{{agent_name}}\"`)、初回作成タスクリスト、要件定義ファイルをここで生成し連携させる。"
       deliverables:
-        - "Flow/{{agent_name}}_{{agent_info.domain}}_agent_build/{{meta.year_month}}/{{meta.today}}_agent_creation_tasklist.md（Markdownタスクリスト）"
+        - "Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}}/{{meta.today}}_agent_creation_tasklist.md（Markdownタスクリスト）"
         - "要件定義メモ"
-        - "Flow/{{agent_name}}_{{agent_info.domain}}_agent_build/{{meta.year_month}}/{{meta.today}}_agent_creation_tasklist.md（root設定と承認事項を記録）"
+        - "Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}}/{{meta.today}}_agent_creation_tasklist.md（root設定と承認事項を記録）"
         - "{{patterns.draft_requirements}}（ヒアリング内容と合意事項）"
         - "業界標準フレームワーク調査ログ（Web検索結果・文献出典・取得日時）"
     - order: 2
@@ -317,7 +325,7 @@ quick_reference:
         - "{domain}_paths.mdc に追記した出力パターン一覧"
     - order: 3
       name: "Phase 3: 品質保証"
-      focus: "`scripts/validate_rules.py` で全ルールの構文・パスコメントを検証し、エラーが出た場合は修正して再実行する。検証結果は {{patterns.rule_check_log}} に保存し、要件定義ファイルと照合して不足・差分を特定する。"
+  focus: "`scripts/validate_rules.py` で全ルールの構文・パスコメントを検証し、エラーが出た場合は修正して再実行する。検証結果は {{patterns.rule_check_log}} に保存し、要件定義ファイルと照合して不足・差分を特定する。"
       deliverables:
         - "バリデーションレポート（{{patterns.rule_check_log}}）"
     - order: 4
@@ -338,8 +346,16 @@ quick_reference:
             content: "**{機能名}を開始します。**\n\n必要な情報を順次お聞きしますので、可能な限り具体的にお答えください。"
           - name: "collect_existing_info"
             action: "gather_existing_info"
-          - name: "ask_questions"
-            action: "call 0X_{domain}_{function}.mdc => {function}_questions"
+          - name: "create_framework_log"
+            action: "create_markdown_file"
+            path: "Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}}/framework_research.md"
+            template_reference: "00_master_rules.mdc => framework_research_template"
+          - name: "framework_research_gate"
+            action: "conditional_step"
+            parameters:
+              condition: "{{framework_research_done}} == true"
+              true_action: "call 0X_{domain}_{function}.mdc => {function}_questions"
+              false_action: "message: 'フレームワーク調査ログが未完了です。Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}}/framework_research.md を記入し、framework_research_done=true を指定して再実行してください。'"
           - name: "create_output"
             action: "create_markdown_file"
             path: "{{patterns.output_{document_type}}}"
@@ -400,6 +416,14 @@ available_actions:
         true_action: "call ファイル名.mdc => セクション名"
         false_action: "message: '情報が不足しています'"
     usage_note: "条件に基づいて処理を分岐させる。"
+  - name: "conditional_step"
+    schema:
+      action: "conditional_step"
+      parameters:
+        condition: "{{field_name}} != empty"
+        true_action: "call ファイル名.mdc => セクション名"
+        false_action: "message: '情報が不足しています'"
+    usage_note: "条件に基づいて処理を分岐させる。"
 
 # =========================
 # 実装必須ポイント
@@ -440,7 +464,7 @@ implementation_requirements:
       - "path は {{patterns.xxx}} 形式で参照する。"
       - "template_reference は ファイル名.mdc => セクション名 形式で統一する。"
       - "content 内の改行は \n\n で明確に区切る。"
-      - "`templates.root_dir` と `root: \"{{templates.root_dir}}/{{agent_name}}\"` の設定内容を Flow/{{agent_name}}_{{agent_info.domain}}_agent_build タスクリストに記録し、全ルールが同一の出力先階層を参照するようにする。"
+      - "`templates.root_dir` と `root: \"{{templates.root_dir}}/{{agent_name}}\"` の設定内容を Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}} タスクリストに記録し、全ルールが同一の出力先階層を参照するようにする。"
       - "02番以降のルールで新たな成果物を生成する場合は、`{domain}_paths.mdc` の patterns に `output_` プレフィックスでファイル名・ディレクトリを定義してからトリガーへ参照させる。"
     error_prevention:
       - "ファイル名は作成する01〜15番のファイルと一致させる。"
@@ -714,6 +738,7 @@ implementation_requirements:
     - "質問セクションに実用的な項目を定義する。"
     - "テンプレートを実際に使用可能な構造にする。"
     - "エラーハンドリングから成功メトリクスまで全セクションを網羅する。"
+    - "framework_research.md の要点・適用方針を反映し、出典・取得日時を明示する。"
   compliance_note: "完全実装例に準拠しないファイルは品質不適合。外部参照なしでも本例だけで完成できること。"
 
 
@@ -761,6 +786,34 @@ prompt_section_policy:
 
 
 # =========================
+# フレームワーク調査テンプレート
+# =========================
+
+framework_research_template: |
+  # フレームワーク調査ログ - {{meta.timestamp}}
+
+  ## 参照フレームワーク
+  - 名称: 
+  - 公式/準拠元: 
+  - URL: 
+  - 取得日時: 
+
+  ## 要点（業務観点）
+  - 
+
+  ## 本エージェントへの適用方針
+  - 適用箇所:
+  - 反映方法:
+  - 除外/留意事項:
+
+  ## 出典リスト（最低1件以上）
+  - タイトル / URL / 取得日時
+
+  ---
+  - 保存先: Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}}/framework_research.md
+
+
+# =========================
 # エージェント生成後の必須01〜ルール作成ワークフロー
 # =========================
 
@@ -774,11 +827,11 @@ post_generation_workflow:
           - "template/agent_base/.cursor/templates/rules/ が存在すれば .cursor/rules/ へ優先コピーし、無い場合は .cursor/rules/ をフォールバックとする。"
           - "コピー後、99_rule_maintenance.mdc などの汎用メンテナンスルール文言を新エージェントに合わせて調整する。"
       - order: 2
-        name: ".cursor/rules/ でルールを作り込む"
+        name: "output/{{agent_info.domain}}_agent/.cursor/rules/ でルールを作り込む"
         tasks:
           - "テンプレが無い場合は空ファイルから整備する。"
       - order: 3
-        name: ".cursor/rules/ 上で直接編集・保存"
+        name: "output/{{agent_info.domain}}_agent/.cursor/rules/ 上で直接編集・保存"
         tasks:
           - "必ず .mdc 形式のまま管理する。"
   implementation_sequence:
@@ -786,7 +839,7 @@ post_generation_workflow:
       - order: 1
         title: "エージェント生成"
         actions:
-          - "enhanced_generate_agent.py を実行して骨格を生成する。"
+          - "scripts/enhanced_generate_agent.py を実行して骨格を生成する。"
       - order: 2
         title: "パスファイル整備"
         actions:
@@ -820,14 +873,14 @@ post_generation_workflow:
         actions:
           - "主要トリガーでワークフローを実行し、意図どおりの成果物が生成されるかを確認する。"
     important_notes:
-      - ".cursor/rules/ が実際に参照されるルール格納場所である。"
+      - "output/{{agent_info.domain}}_agent/.cursor/rules/ が実際に参照されるルール格納場所である。"
       - "97/98/99番台ルールはテンプレ汎用文言のため、エージェント固有のパス・質問・承認フローへ必ず置き換える。"
       - "01〜ルール整備で必要要素が出揃ってから {domain}_paths.mdc と 00_master_rules.mdc を更新し、ディレクトリ構成・master_triggers・メッセージをエージェント仕様に合わせる。"
   template_copy_priority:
     description: "enhanced_generate_agent.py でのテンプレ資材コピー優先順位"
     rules:
-      - "template/agent_base/.cursor/templates/rules/ が存在する場合は .cursor/rules/ へ優先的にコピーする。"
-      - "存在しない場合は template/agent_base/.cursor/rules/ をフォールバックとする。"
+      - "template/agent_base/.cursor/templates/rules/ が存在する場合は output/{{agent_info.domain}}_agent/.cursor/rules/ へ優先コピーする。"
+      - "存在しない場合は template/agent_base/.cursor/rules/ をフォールバックとして同宛先へコピーする。"
       - "コピー後、名称や文脈がエージェントに適合するよう文言を見直す。"
       - "テンプレに rules が無い場合は 01〜ルールを手作業で作成する。"
   domain_rule_creation:
@@ -835,8 +888,9 @@ post_generation_workflow:
       - "機能数は01〜20の範囲でドメインに合わせて調整する。"
       - "実務で即利用できる詳細な質問・テンプレートを作成する。"
       - "業界標準フレームワークに準拠する。"
+      - "Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}}/framework_research.md の要点・適用方針を各ルール（質問/テンプレート/指標/paths）へ反映する。ログ未整備時はルール追加を行わない。"
       - "01〜89番ルールは alwaysApply: false を設定する。"
-      - "02番以降の各ルールでは、成果物の保存先・ファイル名を `{domain}_paths.mdc` に定義し、Flow/{{agent_name}}_{{agent_info.domain}}_agent_build タスクリストで設定完了をチェックする。"
+      - "02番以降の各ルールでは、成果物の保存先・ファイル名を `{domain}_paths.mdc` に定義し、Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}} タスクリストで設定完了をチェックする。"
     function_patterns:
       base_examples:
         - "01_initialization: プロジェクト初期化（Flow/Stock/Archived 基礎フォルダと要件定義ファイル {{patterns.draft_requirements}} の生成、タスクリスト初期化を担当）"
@@ -1188,7 +1242,7 @@ post_generation_workflow:
       - "まず3ルールでMVPを構築する。"
       - "段階的に15ルール以内でドメイン全体をカバーする。"
       - "各ルールは関連機能をまとめて実用レベルまで詳細化する。"
-      - "フェーズ3完了後に `scripts/validate_rules.py` を実行し、ルール整合を確認する。"
+      - "フェーズ3完了後に ` scripts/validate_rules.py` を実行し、ルール整合を確認する。"
     design_flexibility:
       first_rule_patterns:
         - "パターンA（プロジェクト型）: 初期化 + 基本設定 + 構造作成"
@@ -1227,8 +1281,8 @@ important_notes:
 
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.
-NEVER create files unless they're absolutely necessary for achieving your goal.
-ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+NEVER create files unless they're absolutely necessary for achieving your goal. （ただし ` scripts/enhanced_generate_agent.py` の生成物は常に必要と見なす）
+ALWAYS prefer editing an existing file to creating a new one. （ただしジェネレーターによるスキャフォルドは新規作成を許可）
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User. （ただしジェネレーターによる README/root.md 生成は常に許可）
 <!-- FILE: 00_master_rules.mdc END -->
 

@@ -226,6 +226,21 @@ rule_maintenance_steps:
       - "新規・更新トリガーが 00_master_rules.mdc に追記・整形済みである"
       - "保存先/テンプレ参照が {domain}_paths.mdc に定義され、参照キーが一致している"
 
+  3_validation_and_log:
+    name: "バリデーション実行と記録"
+    phases:
+      - "`scripts/validate_rules.py` を {{root}} を起点に実行し、構文・paths の整合を検証"
+      - "結果ログを {{patterns.rule_check_log}} や Flow タスクリストへ記録し、再実行要否を明記"
+      - "エラー発生時は修正タスクと再検証予定を Flow/agent_build タスクリストへ追記"
+    integration_points:
+      - "{{patterns.rule_check_log}}"
+      - "Flow/agent_build タスクリスト"
+      - "scripts/validate_rules.py"
+    quality_standards:
+      - "`python3 scripts/validate_rules.py` の終了コードが0で記録されている"
+      - "実行ログの保存場所とファイル名が明記されている"
+      - "検証結果に基づくフォローアップタスクが整理されている"
+
 # ======== ルール保守ワークフロー ========
 
 rule_maintenance_workflow:
@@ -238,6 +253,18 @@ rule_maintenance_workflow:
     - name: "変更ログ作成"
       action: "create_markdown_file"
       description: "Flow/agent_build ログを生成し、レビュー準備を整える"
+      mandatory: true
+  phase_3:
+    - name: "バリデーション実行"
+      action: "execute_shell"
+      command: "cd {{root}} && python3 scripts/validate_rules.py"
+      description: "{{root}} 配下の scripts/validate_rules.py を実行し最新構成を検証"
+      mandatory: true
+    - name: "検証ログ記録"
+      action: "create_markdown_file"
+      path: "{{patterns.rule_check_log}}"
+      template_reference: "99_rule_maintenance.mdc => rule_check_report_template"
+      description: "検証結果を Flow 日付ディレクトリに記録"
       mandatory: true
 
 # ======== テンプレート ========
