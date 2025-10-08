@@ -23,11 +23,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Tuple, Dict, List
 
-WARNING_MESSAGE = (
-    "# ⚠️ 重要: このファイルは自動生成されています\n"
-    "# ルールを修正する場合は .cursor/rules ディレクトリ内の .mdc ファイルを編集してください\n"
-    "# 直接このファイルを編集しないでください - 変更は上書きされます\n\n"
-)
+WARNING_MESSAGE = ""
 
 MASTER_BLOCK_PATTERN = re.compile(
     r"<!--\s*FILE:\s*(?P<name>[^>]+?)\s*START\s*-->\s*(?P<body>.*?)\s*<!--\s*FILE:\s*(?P=name)\s*END\s*-->",
