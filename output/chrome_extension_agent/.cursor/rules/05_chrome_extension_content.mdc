@@ -1,0 +1,522 @@
+---
+description: Chrome拡張Content Script実装システム
+globs:
+alwaysApply: false
+---
+# ==========================================================
+# 05_chrome_extension_content.mdc - Content Script実装
+# ==========================================================
+
+path_reference: "chrome_extension_paths.mdc"
+
+# ======== プロンプト（目的と使い方） ========
+prompt_purpose: |
+  Chrome拡張開発者がWebページに直接挿入されるContent Scriptを実装し、DOM操作、イベント監視、Background Scriptとの連携を通じてページ拡張機能を構築します。
+
+prompt_why_questions: |
+  Content Scriptで実行する処理（DOM操作、要素監視、スタイル変更等）、実行タイミング（document_idle/document_start/document_end）、マッチパターン（対象URL）を収集することで、Webページへの適切な介入方法を設計します。
+
+prompt_why_templates: |
+  Content Scriptの典型的なパターン（DOM監視、要素挿入、Background通信）をテンプレート化することで、isolated worldの制約、CSP制約を考慮した実装を即座に適用できます。
+
+prompt_principles: |
+  - Isolated worldの原則を遵守（ページスクリプトとの分離）
+  - DOMContentLoadedまたはload時の実行タイミング制御
+  - 不足情報は「未記載」として明示
+  - マッチパターンの最小化（不要なページでの実行を避ける）
+  - 出典URL・取得日時を記録
+
+# ======== Content Script実装システム統合エージェント ========
+
+system_capabilities:
+  dom_manipulation: "Webページの要素を検索・追加・削除・変更し、ユーザー体験を拡張する機能を実装"
+  mutation_observer: "MutationObserverを用いて動的に追加される要素を監視し、リアルタイムにDOM変更へ対応"
+  event_listener_injection: "ページ内のイベント（クリック、フォーム送信等）を監視し、拡張機能の操作を実現"
+  css_injection: "カスタムスタイルシートを注入し、ページの見た目を変更する機能を実装"
+  background_communication: "chrome.runtime.sendMessageでBackground Scriptと通信し、ページ情報を送信または指示を受信"
+  isolated_world_handling: "Isolated worldの制約を理解し、ページスクリプトとの変数衝突を回避"
+
+# ======== Phase 1: Content Script要件収集フェーズ ========
+
+phase_1_description: |
+  Content Scriptで実行する処理内容（DOM操作、要素挿入、スタイル変更等）を収集します。
+  実行対象のURLパターン（マッチパターン）を確認し、不要なページでの実行を防ぎます。
+  実行タイミング（document_idle/document_start/document_end）を確認します。
+
+# ======== Phase 2: 実装生成フェーズ ========
+
+phase_2_description: |
+  収集した要件に基づき、content.jsとcontent.css（任意）を生成します。
+  MutationObserverやイベントリスナーを実装し、Background Scriptとのメッセージング機能を組み込みます。
+  manifest.jsonのcontent_scriptsセクションにマッチパターンと実行タイミングを設定します。
+
+# ======== 統合オプション質問 ========
+
+content_questions:
+  - key: "content_features"
+    prompt: "Content Scriptで実装する機能を選択してください（カンマ区切り）:\n- dom_manipulation: DOM要素の追加・変更・削除\n- style_injection: CSSスタイルの注入\n- element_monitoring: 要素の出現監視（MutationObserver）\n- event_listening: ページイベント（クリック、フォーム送信等）の監視\n- background_messaging: Background Scriptとの通信\n- page_analysis: ページ情報の収集・分析"
+    type: "text"
+    required: true
+    placeholder: "例: dom_manipulation,background_messaging"
+
+  - key: "match_patterns"
+    prompt: "Content Scriptを実行するURLパターンを入力してください（カンマ区切り）:\n例: <all_urls>, https://*.example.com/*, https://example.com/page/*"
+    type: "text"
+    required: true
+    placeholder: "例: <all_urls>"
+
+  - key: "run_at"
+    prompt: "実行タイミングを選択してください:\n- document_idle: ページロード完了後（推奨・デフォルト）\n- document_start: DOM構築前（最速）\n- document_end: DOM構築完了後、画像等のロード前"
+    type: "text"
+    required: false
+    placeholder: "document_idle"
+
+  - key: "target_elements"
+    prompt: "操作対象の要素セレクタを入力してください（カンマ区切り、任意）:\n例: .target-class, #target-id, div[data-attr]"
+    type: "text"
+    required: false
+    placeholder: "例: .content, #main"
+
+  - key: "inject_css"
+    prompt: "カスタムCSSを注入しますか？ (yes/no)"
+    type: "text"
+    required: false
+    placeholder: "no"
+
+  - key: "use_mutation_observer"
+    prompt: "MutationObserverで動的要素を監視しますか？ (yes/no)"
+    type: "text"
+    required: false
+    placeholder: "no"
+
+# ======== Content Script実装プロセス ========
+
+content_implementation_steps:
+  1_javascript_implementation:
+    name: "JavaScript実装"
+    phases:
+      - "content.js を src/js/ に作成"
+      - "DOMContentLoaded または即座に実行する初期化処理を実装"
+      - "対象要素のセレクタで要素を取得し、DOM操作を実行"
+      - "MutationObserverを設定（必要に応じて）"
+      - "chrome.runtime.sendMessage でBackground Scriptと通信（必要に応じて）"
+    quality_standards:
+      - "Isolated world内での実行を考慮（ページスクリプトと変数衝突しない）"
+      - "エラーハンドリングを実装（要素が見つからない場合等）"
+
+  2_css_injection:
+    name: "CSSインジェクション"
+    phases:
+      - "content.css を src/css/ に作成（必要に応じて）"
+      - "manifest.json の content_scripts.css にファイルパスを追加"
+      - "ページのスタイルを上書きするルールを定義"
+    integration_points:
+      - "!important を使用してページスタイルを上書き（必要に応じて）"
+
+  3_mutation_observer_setup:
+    name: "MutationObserver設定"
+    phases:
+      - "動的に追加される要素を監視するMutationObserverを実装"
+      - "childList, subtree オプションを設定して全子要素を監視"
+      - "監視対象の要素が追加されたら処理を実行"
+    automation_features:
+      - "一度処理した要素にマーカー属性を追加し、重複処理を防止"
+
+# ======== Content Scriptワークフロー ========
+
+content_workflow:
+  phase_1:
+    - name: "Content Script要件収集"
+      action: "call 05_chrome_extension_content.mdc => content_questions"
+      description: "実装機能、マッチパターン、実行タイミングを決定"
+      mandatory: true
+
+  phase_2:
+    - name: "content.js生成"
+      action: "create_file"
+      description: "Content Scriptを src/js/ に生成"
+      mandatory: true
+
+    - name: "content.css生成"
+      action: "create_file"
+      description: "カスタムCSSを src/css/ に生成（inject_css が yes の場合）"
+      mandatory: false
+
+    - name: "実装メモ保存"
+      action: "create_markdown_file"
+      description: "Flow側にContent Script実装メモを保存"
+      mandatory: true
+
+# ======== テンプレート ========
+
+content_js_template: |
+  // content.js - Content Script (Manifest V3)
+
+  console.log('Content script loaded on:', window.location.href);
+
+  {{#if content_features.includes('dom_manipulation')}}
+  // DOM操作の初期化
+  function initializeDOMManipulation() {
+    console.log('Initializing DOM manipulation...');
+
+    {{#if target_elements}}
+    const targetSelectors = [{{target_elements}}];
+
+    targetSelectors.forEach(selector => {
+      const elements = document.querySelectorAll(selector);
+      console.log(`Found ${elements.length} elements for selector: ${selector}`);
+
+      elements.forEach(element => {
+        // DOM操作の実装例
+        processElement(element);
+      });
+    });
+    {{else}}
+    // 全ページに対する処理
+    console.log('Processing all page elements...');
+    {{/if}}
+  }
+
+  function processElement(element) {
+    // 要素処理のカスタムロジックをここに実装
+    // 例:
+    // element.style.backgroundColor = 'yellow';
+    // element.setAttribute('data-processed', 'true');
+
+    console.log('Element processed:', element);
+  }
+  {{/if}}
+
+  {{#if use_mutation_observer}}
+  // MutationObserver - 動的要素の監視
+  function setupMutationObserver() {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'childList') {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              console.log('New element added:', node);
+
+              {{#if target_elements}}
+              // 特定セレクタにマッチする要素のみ処理
+              const targetSelectors = [{{target_elements}}];
+              targetSelectors.forEach(selector => {
+                if (node.matches && node.matches(selector)) {
+                  processElement(node);
+                }
+
+                // 子要素も確認
+                const childElements = node.querySelectorAll(selector);
+                childElements.forEach(child => processElement(child));
+              });
+              {{else}}
+              // 全要素を処理
+              processElement(node);
+              {{/if}}
+            }
+          });
+        }
+      });
+    });
+
+    // 監視開始
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+
+    console.log('MutationObserver initialized');
+  }
+  {{/if}}
+
+  {{#if content_features.includes('event_listening')}}
+  // イベントリスナーの設定
+  function setupEventListeners() {
+    document.addEventListener('click', (event) => {
+      console.log('Click detected on:', event.target);
+
+      {{#if target_elements}}
+      const targetSelectors = [{{target_elements}}];
+      const isTargetElement = targetSelectors.some(selector =>
+        event.target.matches(selector)
+      );
+
+      if (isTargetElement) {
+        handleTargetClick(event);
+      }
+      {{else}}
+      // 全クリックイベントを処理
+      handleClick(event);
+      {{/if}}
+    });
+
+    console.log('Event listeners initialized');
+  }
+
+  function handleTargetClick(event) {
+    console.log('Target element clicked:', event.target);
+
+    // クリック処理のカスタムロジック
+    {{#if content_features.includes('background_messaging')}}
+    chrome.runtime.sendMessage({
+      type: 'ELEMENT_CLICKED',
+      element: event.target.tagName,
+      url: window.location.href
+    });
+    {{/if}}
+  }
+
+  function handleClick(event) {
+    console.log('Click event handled:', event.target);
+  }
+  {{/if}}
+
+  {{#if content_features.includes('background_messaging')}}
+  // Background Scriptとの通信
+  function sendToBackground(data) {
+    chrome.runtime.sendMessage(data, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('Message send failed:', chrome.runtime.lastError);
+        return;
+      }
+
+      console.log('Response from background:', response);
+    });
+  }
+
+  // Background Scriptからのメッセージ受信
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log('Message received from background:', message);
+
+    if (message.type === 'TAB_LOADED') {
+      console.log('Tab loaded message received');
+      sendResponse({ success: true });
+    }
+
+    // 他のメッセージタイプの処理を追加
+  });
+  {{/if}}
+
+  {{#if content_features.includes('page_analysis')}}
+  // ページ情報の収集・分析
+  function analyzePageContent() {
+    const pageInfo = {
+      title: document.title,
+      url: window.location.href,
+      textContent: document.body.innerText.substring(0, 1000),
+      elementCount: document.querySelectorAll('*').length,
+      imageCount: document.querySelectorAll('img').length,
+      linkCount: document.querySelectorAll('a').length
+    };
+
+    console.log('Page analysis:', pageInfo);
+
+    {{#if content_features.includes('background_messaging')}}
+    // Background Scriptへ送信
+    sendToBackground({
+      type: 'PAGE_ANALYZED',
+      data: pageInfo
+    });
+    {{/if}}
+
+    return pageInfo;
+  }
+  {{/if}}
+
+  // 初期化処理
+  {{#if run_at === 'document_start'}}
+  // document_start: 即座に実行
+  console.log('Initializing at document_start...');
+  {{#if content_features.includes('dom_manipulation')}}
+  initializeDOMManipulation();
+  {{/if}}
+  {{#if use_mutation_observer}}
+  setupMutationObserver();
+  {{/if}}
+  {{#if content_features.includes('event_listening')}}
+  setupEventListeners();
+  {{/if}}
+  {{else}}
+  // document_idle / document_end: DOMContentLoaded待機
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initialize);
+  } else {
+    initialize();
+  }
+
+  function initialize() {
+    console.log('Content script initialized');
+
+    {{#if content_features.includes('dom_manipulation')}}
+    initializeDOMManipulation();
+    {{/if}}
+
+    {{#if use_mutation_observer}}
+    setupMutationObserver();
+    {{/if}}
+
+    {{#if content_features.includes('event_listening')}}
+    setupEventListeners();
+    {{/if}}
+
+    {{#if content_features.includes('page_analysis')}}
+    analyzePageContent();
+    {{/if}}
+  }
+  {{/if}}
+
+  console.log('Content script setup complete');
+
+content_css_template: |
+  /* content.css - Content Script用カスタムスタイル */
+
+  /* 拡張機能が追加した要素のスタイル */
+  .extension-highlight {
+    background-color: yellow !important;
+    border: 2px solid orange !important;
+  }
+
+  .extension-tooltip {
+    position: fixed;
+    background-color: #333;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    z-index: 10000;
+  }
+
+  .extension-button {
+    padding: 6px 12px;
+    background-color: #1a73e8;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .extension-button:hover {
+    background-color: #1557b0;
+  }
+
+  /* ページ要素の上書きスタイル */
+  {{#if target_elements}}
+  {{target_elements}} {
+    /* カスタムスタイルを適用 */
+  }
+  {{/if}}
+
+content_implementation_memo_template: |
+  # Content Script実装メモ - {{meta.timestamp}}
+
+  ## 基本情報
+  - **実装機能**: {{content_features}}
+  - **マッチパターン**: {{match_patterns}}
+  - **実行タイミング**: {{run_at}}
+  - **対象要素**: {{target_elements}}
+
+  ## 機能詳細
+  {{#if content_features.includes('dom_manipulation')}}
+  - DOM操作: 対象要素の検索・変更を実装
+  {{/if}}
+  {{#if inject_css}}
+  - CSSインジェクション: content.css でカスタムスタイルを注入
+  {{/if}}
+  {{#if use_mutation_observer}}
+  - MutationObserver: 動的に追加される要素を監視
+  {{/if}}
+  {{#if content_features.includes('event_listening')}}
+  - イベントリスナー: クリックイベント等を監視
+  {{/if}}
+  {{#if content_features.includes('background_messaging')}}
+  - Background通信: chrome.runtime.sendMessage でメッセージ送信
+  {{/if}}
+  {{#if content_features.includes('page_analysis')}}
+  - ページ分析: ページ情報を収集・送信
+  {{/if}}
+
+  ## Isolated World
+  - Content Scriptは独立した実行環境で動作
+  - ページスクリプトとの変数衝突なし
+  - ページのグローバル変数には直接アクセス不可
+
+  ## manifest.json設定
+  ```json
+  "content_scripts": [
+    {
+      "matches": [{{match_patterns}}],
+      "js": ["src/js/content.js"],
+      {{#if inject_css}}
+      "css": ["src/css/content.css"],
+      {{/if}}
+      "run_at": "{{run_at}}"
+    }
+  ]
+  ```
+
+  ## ファイル
+  - src/js/content.js
+  {{#if inject_css}}
+  - src/css/content.css
+  {{/if}}
+
+  ## 次のステップ
+  1. manifest.jsonのcontent_scriptsセクションを確認
+  2. Chrome開発者モードで拡張機能を読み込み
+  3. 対象URLでページを開き、コンソールログを確認
+  4. DOM操作・イベントリスナーの動作確認
+
+  ---
+  **保存先**: Flow/{{meta.year_month}}/{{meta.today}}/content_memo_{{meta.today}}.md
+
+# ======== エラーハンドリング ========
+
+error_handling:
+  element_not_found:
+    message: "対象要素が見つかりませんでした。"
+    recovery_actions:
+      - "セレクタが正しいか確認"
+      - "実行タイミングを document_idle に変更"
+      - "MutationObserverで動的要素の出現を待機"
+
+  csp_violation:
+    message: "ページのContent Security Policyにより実行がブロックされました。"
+    recovery_actions:
+      - "インラインスクリプトを使用しない"
+      - "外部リソースの読み込みを避ける"
+
+# ======== 設定 ========
+
+content_settings:
+  default_run_at: "document_idle"
+  default_match_pattern: "<all_urls>"
+  mutation_observer_throttle: 100
+
+# ======== 統合ポイント ========
+
+integration_points:
+  background_messaging:
+    trigger: "content_features に background_messaging が含まれる場合"
+    action: "call 04_chrome_extension_background.mdc"
+
+  testing:
+    trigger: "実装完了後"
+    action: "call 07_chrome_extension_testing.mdc"
+
+# ======== 品質保証 ========
+
+quality_assurance:
+  mandatory_checks:
+    - "対象要素が存在しない場合のエラーハンドリングが実装されていること"
+    - "MutationObserverのdisconnect処理が実装されていること（必要に応じて）"
+    - "Isolated worldの原則が守られていること"
+    - "manifest.jsonのcontent_scriptsセクションが正しく設定されていること"
+
+# ======== 成功メトリクス ========
+
+success_metrics:
+  - "Content Script初期化時間 < 500ms"
+  - "DOM操作成功率 = 100%"
+  - "MutationObserver検出精度 > 95%"
+  - "Background通信成功率 = 100%"
