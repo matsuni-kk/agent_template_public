@@ -1,0 +1,564 @@
+---
+description: Chrome拡張Popup UI実装システム
+globs:
+alwaysApply: false
+---
+# ==========================================================
+# 03_chrome_extension_popup.mdc - Popup UI実装
+# ==========================================================
+
+path_reference: "chrome_extension_paths.mdc"
+
+# ======== プロンプト（目的と使い方） ========
+prompt_purpose: |
+  Chrome拡張開発者がツールバーアイコンクリック時に表示されるPopup UIを実装し、HTML/CSS/JavaScriptを用いてユーザー操作インターフェースを構築します。
+
+prompt_why_questions: |
+  Popup UIの機能要件、表示する情報、ユーザー操作項目、Chrome API連携を収集することで、拡張機能の主要な操作インターフェースを設計し、ユーザビリティとアクセシビリティを確保します。
+
+prompt_why_templates: |
+  Manifest V3準拠のPopup HTML/CSS/JS構造テンプレートを提供することで、Chrome API（storage, tabs等）との連携パターンを即座に実装でき、開発時間を短縮します。
+
+prompt_principles: |
+  - Manifest V3準拠のインラインスクリプト禁止ルールを遵守
+  - Chrome Storage APIを用いた設定永続化
+  - 不足情報は「未記載」として明示
+  - UIコンポーネントのアクセシビリティ確保（ARIA属性、キーボード操作対応）
+  - 出典URL・取得日時を記録
+
+# ======== Popup UI実装システム統合エージェント ========
+
+system_capabilities:
+  html_structure_generation: "Manifest V3準拠のPopup HTML構造を生成し、インラインスクリプト禁止ルールに準拠した外部JSファイル参照を実装"
+  css_styling_framework: "レスポンシブで視認性の高いCSSスタイルを提供し、Chromeツールバーポップアップの推奨サイズ（幅300-800px、高さ最大600px）に最適化"
+  javascript_api_integration: "Chrome Storage API、Tabs API、Scripting APIとの連携コードを生成し、バックグラウンドとのメッセージング機能を実装"
+  user_interaction_handling: "ボタンクリック、フォーム入力、設定保存などのユーザー操作イベントハンドリングを実装"
+  state_management: "ローカルストレージを用いた設定値の読み書き、UI状態の永続化を実装"
+  error_feedback: "ユーザーフレンドリーなエラーメッセージ表示とローディング状態の管理を実装"
+
+# ======== Phase 1: UI要件収集フェーズ ========
+
+phase_1_description: |
+  Popup UIで表示する情報、操作項目（ボタン、入力フォーム、設定項目）、Chrome API利用予定を質問形式で収集します。
+  既存のデザインシステムやUIフレームワーク（Bootstrap, Tailwind CSS等）の使用有無を確認します。
+  アクセシビリティ要件（スクリーンリーダー対応、キーボード操作対応）を確認します。
+
+# ======== Phase 2: 実装生成フェーズ ========
+
+phase_2_description: |
+  収集した要件に基づき、popup.html、popup.css、popup.jsを生成します。
+  Chrome Storage APIを用いた設定の読み書き機能を実装し、バックグラウンドスクリプトとのメッセージング機能を組み込みます。
+  Flow側にUI設計メモとコンポーネント仕様を保存し、後続のテスト工程で参照できるようにします。
+
+# ======== 統合オプション質問 ========
+
+popup_questions:
+  - key: "popup_title"
+    prompt: "Popup UIのタイトルを入力してください："
+    type: "text"
+    required: true
+    placeholder: "例: My Extension Settings"
+
+  - key: "popup_features"
+    prompt: "Popup UIで提供する機能を選択してください（カンマ区切り）:\n- status_display: 拡張機能の状態表示\n- toggle_button: オン/オフ切り替えボタン\n- input_form: テキスト入力フォーム\n- settings: 設定項目表示\n- action_button: アクション実行ボタン\n- tab_info: 現在のタブ情報表示"
+    type: "text"
+    required: true
+    placeholder: "例: status_display,toggle_button,settings"
+
+  - key: "use_chrome_storage"
+    prompt: "Chrome Storage APIを使用しますか？ (yes/no)"
+    type: "text"
+    required: true
+    placeholder: "yes"
+
+  - key: "use_background_messaging"
+    prompt: "バックグラウンドスクリプトとのメッセージング機能を使用しますか？ (yes/no)"
+    type: "text"
+    required: true
+    placeholder: "yes"
+
+  - key: "ui_framework"
+    prompt: "使用するCSSフレームワークを選択してください（任意）:\n- none: フレームワークなし\n- bootstrap: Bootstrap\n- tailwind: Tailwind CSS\n- material: Material Design"
+    type: "text"
+    required: false
+    placeholder: "例: none"
+
+  - key: "accessibility_required"
+    prompt: "アクセシビリティ対応（ARIA属性、キーボード操作）を実装しますか？ (yes/no)"
+    type: "text"
+    required: false
+    placeholder: "yes"
+
+# ======== Popup実装プロセス ========
+
+popup_implementation_steps:
+  1_html_structure:
+    name: "HTML構造生成"
+    phases:
+      - "popup.html を src/html/ に作成"
+      - "DOCTYPE、meta charset、viewport設定を配置"
+      - "外部CSS（popup.css）と外部JS（popup.js）を参照（インラインスクリプト禁止）"
+      - "タイトル、ボタン、入力フォーム、ステータス表示領域をマークアップ"
+      - "ARIA属性（role, aria-label等）を必要に応じて追加"
+    quality_standards:
+      - "インラインスクリプト・インラインイベントハンドラ禁止（Manifest V3 CSP準拠）"
+      - "セマンティックHTML使用（button, input, label等）"
+      - "アクセシビリティ確保（キーボード操作可能、スクリーンリーダー対応）"
+
+  2_css_styling:
+    name: "CSSスタイリング"
+    phases:
+      - "popup.css を src/css/ に作成"
+      - "推奨サイズ（幅300-400px、高さ最大600px）に最適化"
+      - "ボタン、入力フォーム、ステータス表示のスタイル定義"
+      - "ホバー効果、フォーカス状態のスタイル追加"
+      - "ダークモード対応（必要に応じて）"
+    integration_points:
+      - "選択されたUIフレームワーク（Bootstrap等）のCDNまたはローカルファイルを参照"
+
+  3_javascript_implementation:
+    name: "JavaScript実装"
+    phases:
+      - "popup.js を src/js/ に作成"
+      - "DOMContentLoaded イベントで初期化処理を実行"
+      - "Chrome Storage API（chrome.storage.sync または chrome.storage.local）で設定読み込み"
+      - "ボタンクリック、フォーム入力のイベントリスナーを登録"
+      - "バックグラウンドスクリプトへのメッセージ送信機能を実装（chrome.runtime.sendMessage）"
+      - "エラーハンドリングとローディング状態の管理を実装"
+    automation_features:
+      - "設定保存時に自動でバリデーション実施"
+      - "保存成功/失敗のフィードバック表示"
+
+# ======== Popupワークフロー ========
+
+popup_workflow:
+  phase_1:
+    - name: "UI要件収集"
+      action: "call 03_chrome_extension_popup.mdc => popup_questions"
+      description: "Popup UIの機能要件とChrome API利用予定を収集"
+      mandatory: true
+
+  phase_2:
+    - name: "HTML生成"
+      action: "create_file"
+      description: "popup.html を src/html/ に生成"
+      mandatory: true
+
+    - name: "CSS生成"
+      action: "create_file"
+      description: "popup.css を src/css/ に生成"
+      mandatory: true
+
+    - name: "JavaScript生成"
+      action: "create_file"
+      description: "popup.js を src/js/ に生成"
+      mandatory: true
+
+    - name: "UI設計メモ保存"
+      action: "create_markdown_file"
+      description: "Flow側にUI設計メモを保存"
+      mandatory: true
+
+# ======== テンプレート ========
+
+popup_html_template: |
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{popup_title}}</title>
+    <link rel="stylesheet" href="../css/popup.css">
+  </head>
+  <body>
+    <div class="popup-container">
+      <header>
+        <h1>{{popup_title}}</h1>
+      </header>
+
+      <main>
+        {{#if popup_features.includes('status_display')}}
+        <section class="status-section">
+          <p id="status">状態: <span id="status-value">未取得</span></p>
+        </section>
+        {{/if}}
+
+        {{#if popup_features.includes('toggle_button')}}
+        <section class="toggle-section">
+          <button id="toggle-btn" aria-label="機能のオン/オフ切り替え">切り替え</button>
+        </section>
+        {{/if}}
+
+        {{#if popup_features.includes('input_form')}}
+        <section class="input-section">
+          <label for="input-field">設定値:</label>
+          <input type="text" id="input-field" placeholder="値を入力してください">
+          <button id="save-btn">保存</button>
+        </section>
+        {{/if}}
+
+        {{#if popup_features.includes('action_button')}}
+        <section class="action-section">
+          <button id="action-btn" class="primary-btn">アクション実行</button>
+        </section>
+        {{/if}}
+      </main>
+
+      <footer>
+        <p id="message" class="message hidden"></p>
+      </footer>
+    </div>
+
+    <script src="../js/popup.js"></script>
+  </body>
+  </html>
+
+popup_css_template: |
+  body {
+    width: 350px;
+    min-height: 200px;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    color: #333;
+  }
+
+  .popup-container {
+    padding: 16px;
+  }
+
+  header h1 {
+    font-size: 18px;
+    margin: 0 0 16px 0;
+    color: #1a73e8;
+  }
+
+  section {
+    margin-bottom: 16px;
+  }
+
+  button {
+    padding: 8px 16px;
+    background-color: #1a73e8;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  button:hover {
+    background-color: #1557b0;
+  }
+
+  button:focus {
+    outline: 2px solid #1a73e8;
+    outline-offset: 2px;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+
+  input[type="text"]:focus {
+    outline: 2px solid #1a73e8;
+    border-color: #1a73e8;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+
+  .message {
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .message.success {
+    background-color: #e6f4ea;
+    color: #137333;
+  }
+
+  .message.error {
+    background-color: #fce8e6;
+    color: #c5221f;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  .status-section {
+    padding: 12px;
+    background-color: #f1f3f4;
+    border-radius: 4px;
+  }
+
+  #status-value {
+    font-weight: bold;
+  }
+
+popup_js_template: |
+  // popup.js - Popup UI制御スクリプト
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    console.log('Popup initialized');
+
+    {{#if use_chrome_storage}}
+    // Chrome Storage APIから設定読み込み
+    try {
+      const data = await chrome.storage.sync.get(['enabled', 'inputValue']);
+      console.log('Loaded settings:', data);
+
+      if (data.enabled !== undefined) {
+        updateStatus(data.enabled);
+      }
+
+      if (data.inputValue) {
+        const inputField = document.getElementById('input-field');
+        if (inputField) {
+          inputField.value = data.inputValue;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+      showMessage('設定の読み込みに失敗しました', 'error');
+    }
+    {{/if}}
+
+    {{#if popup_features.includes('toggle_button')}}
+    // トグルボタンのイベントリスナー
+    const toggleBtn = document.getElementById('toggle-btn');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', async () => {
+        try {
+          const data = await chrome.storage.sync.get(['enabled']);
+          const newState = !data.enabled;
+
+          await chrome.storage.sync.set({ enabled: newState });
+          updateStatus(newState);
+
+          {{#if use_background_messaging}}
+          // バックグラウンドスクリプトへ通知
+          chrome.runtime.sendMessage({
+            type: 'TOGGLE_STATE',
+            enabled: newState
+          });
+          {{/if}}
+
+          showMessage('設定を更新しました', 'success');
+        } catch (error) {
+          console.error('Toggle failed:', error);
+          showMessage('設定の更新に失敗しました', 'error');
+        }
+      });
+    }
+    {{/if}}
+
+    {{#if popup_features.includes('input_form')}}
+    // 保存ボタンのイベントリスナー
+    const saveBtn = document.getElementById('save-btn');
+    const inputField = document.getElementById('input-field');
+
+    if (saveBtn && inputField) {
+      saveBtn.addEventListener('click', async () => {
+        const value = inputField.value.trim();
+
+        if (!value) {
+          showMessage('値を入力してください', 'error');
+          return;
+        }
+
+        try {
+          await chrome.storage.sync.set({ inputValue: value });
+          showMessage('保存しました', 'success');
+
+          {{#if use_background_messaging}}
+          // バックグラウンドスクリプトへ通知
+          chrome.runtime.sendMessage({
+            type: 'UPDATE_VALUE',
+            value: value
+          });
+          {{/if}}
+        } catch (error) {
+          console.error('Save failed:', error);
+          showMessage('保存に失敗しました', 'error');
+        }
+      });
+    }
+    {{/if}}
+
+    {{#if popup_features.includes('action_button')}}
+    // アクションボタンのイベントリスナー
+    const actionBtn = document.getElementById('action-btn');
+    if (actionBtn) {
+      actionBtn.addEventListener('click', async () => {
+        try {
+          {{#if use_background_messaging}}
+          // バックグラウンドスクリプトへメッセージ送信
+          const response = await chrome.runtime.sendMessage({
+            type: 'EXECUTE_ACTION'
+          });
+
+          if (response && response.success) {
+            showMessage('アクションを実行しました', 'success');
+          } else {
+            showMessage('アクションの実行に失敗しました', 'error');
+          }
+          {{else}}
+          // 現在のタブでコンテンツスクリプトを実行
+          const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            function: () => {
+              console.log('Action executed');
+              // カスタムアクション実装
+            }
+          });
+          showMessage('アクションを実行しました', 'success');
+          {{/if}}
+        } catch (error) {
+          console.error('Action failed:', error);
+          showMessage('アクションの実行に失敗しました', 'error');
+        }
+      });
+    }
+    {{/if}}
+  });
+
+  function updateStatus(enabled) {
+    const statusValue = document.getElementById('status-value');
+    if (statusValue) {
+      statusValue.textContent = enabled ? '有効' : '無効';
+      statusValue.style.color = enabled ? '#137333' : '#c5221f';
+    }
+
+    const toggleBtn = document.getElementById('toggle-btn');
+    if (toggleBtn) {
+      toggleBtn.textContent = enabled ? 'オフにする' : 'オンにする';
+    }
+  }
+
+  function showMessage(text, type = 'success') {
+    const message = document.getElementById('message');
+    if (message) {
+      message.textContent = text;
+      message.className = `message ${type}`;
+      message.classList.remove('hidden');
+
+      setTimeout(() => {
+        message.classList.add('hidden');
+      }, 3000);
+    }
+  }
+
+popup_design_memo_template: |
+  # Popup UI設計メモ - {{meta.timestamp}}
+
+  ## 基本情報
+  - **タイトル**: {{popup_title}}
+  - **提供機能**: {{popup_features}}
+  - **Chrome Storage API使用**: {{use_chrome_storage}}
+  - **バックグラウンドメッセージング使用**: {{use_background_messaging}}
+
+  ## UI構成
+  ### コンポーネント
+  - ヘッダー: タイトル表示
+  - メインコンテンツ: 機能セクション（{{popup_features}}）
+  - フッター: メッセージ表示エリア
+
+  ### スタイル
+  - **幅**: 350px
+  - **最小高さ**: 200px
+  - **UIフレームワーク**: {{ui_framework}}
+  - **アクセシビリティ対応**: {{accessibility_required}}
+
+  ## Chrome API連携
+  {{#if use_chrome_storage}}
+  - Storage API: chrome.storage.sync で設定永続化
+  {{/if}}
+  {{#if use_background_messaging}}
+  - Messaging API: chrome.runtime.sendMessage でバックグラウンドと通信
+  {{/if}}
+
+  ## ファイル構成
+  - HTML: src/html/popup.html
+  - CSS: src/css/popup.css
+  - JavaScript: src/js/popup.js
+
+  ## 実装済み機能
+  - [x] HTML構造生成
+  - [x] CSSスタイリング
+  - [x] JavaScript実装
+  - [ ] テスト実施
+  - [ ] バリデーション確認
+
+  ## 次のステップ
+  1. Chrome開発者モードで拡張機能を読み込み
+  2. Popup UIの動作確認
+  3. Chrome Storage APIの読み書き確認
+  4. バックグラウンドメッセージングの動作確認
+
+  ---
+  **保存先**: Flow/{{meta.year_month}}/{{meta.today}}/popup_design_{{meta.today}}.md
+
+# ======== エラーハンドリング ========
+
+error_handling:
+  inline_script_violation:
+    message: "インラインスクリプトが検出されました。Manifest V3では禁止されています。"
+    recovery_actions:
+      - "すべてのスクリプトを外部JSファイルに移動"
+      - "イベントハンドラをaddEventListenerで実装"
+
+  storage_api_error:
+    message: "Chrome Storage APIへのアクセスに失敗しました。"
+    recovery_actions:
+      - "manifest.jsonにstorageパーミッションが設定されているか確認"
+      - "エラーハンドリング実装（try-catchブロック）"
+
+# ======== 設定 ========
+
+popup_settings:
+  default_width: "350px"
+  max_height: "600px"
+  storage_type: "sync"
+  message_timeout: 3000
+
+# ======== 統合ポイント ========
+
+integration_points:
+  background_messaging:
+    trigger: "use_background_messaging が true の場合"
+    action: "call 04_chrome_extension_background.mdc"
+
+  testing:
+    trigger: "実装完了後"
+    action: "call 07_chrome_extension_testing.mdc"
+
+# ======== 品質保証 ========
+
+quality_assurance:
+  mandatory_checks:
+    - "インラインスクリプト・インラインイベントハンドラが存在しないこと"
+    - "外部CSS・JSファイルが正しく参照されていること"
+    - "Chrome Storage APIの読み書きが正常動作すること"
+    - "アクセシビリティ対応（ARIA属性、キーボード操作）が実装されていること"
+
+# ======== 成功メトリクス ========
+
+success_metrics:
+  - "Popup表示速度 < 300ms"
+  - "Chrome Storage API読み書き成功率 = 100%"
+  - "CSP違反エラー = 0"
+  - "アクセシビリティスコア > 90%"
