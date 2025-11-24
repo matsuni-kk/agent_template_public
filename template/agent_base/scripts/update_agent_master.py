@@ -82,14 +82,23 @@ def remove_frontmatter(content):
 def create_cursor_frontmatter(name: str, description: str) -> str:
     """
     .cursor/rules形式のフロントマターを作成
+    00またはpathを含むファイルは alwaysApply: true を含む3フィールド
+    それ以外は description と globs のみの2フィールド
     """
-    # 00またはpathを含むファイルはalwaysApply: true、それ以外はfalse
-    always_apply = "true" if ("00" in name or "path" in name.lower()) else "false"
-    
-    return f"""---
+    # 00またはpathを含むファイルはalwaysApply: trueを含める
+    if "00" in name or "path" in name.lower():
+        return f"""---
 description: {description}
-globs: 
-alwaysApply: {always_apply}
+globs:
+alwaysApply: true
+---
+
+"""
+    else:
+        # 通常のファイルは alwaysApply を含めない
+        return f"""---
+description: {description}
+globs:
 ---
 
 """
@@ -171,14 +180,20 @@ def create_agents_from_mdc():
     """
     mdcファイルを.claude/agentsにコピーしてエージェントファイルとして変換する
     00とpathを含むファイルは.mdcのままフロントマター変更なしでコピー
+    さらに、.cursor/commands/agents/にもフロントマターを削除したMD形式でコピーする
     """
     project_root = get_root_directory()
     rules_dir = project_root / ".cursor" / "rules"
     agents_dir = project_root / ".claude" / "agents"
+    commands_agents_dir = project_root / ".cursor" / "commands" / "agents_commands"
     
     # エージェントディレクトリを作成
     agents_dir.mkdir(parents=True, exist_ok=True)
     print(f"📁 エージェントディレクトリ準備完了: {agents_dir}")
+    
+    # コマンドエージェントディレクトリを作成
+    commands_agents_dir.mkdir(parents=True, exist_ok=True)
+    print(f"📁 コマンドエージェントディレクトリ準備完了: {commands_agents_dir}")
     
     # 既存のエージェントファイルを削除（.mdと.mdcの両方）
     for agent_file in agents_dir.glob("*"):
@@ -188,6 +203,14 @@ def create_agents_from_mdc():
                 print(f"🗑️  削除: {agent_file.name}")
             except Exception as e:
                 print(f"⚠️  削除失敗: {agent_file.name}: {e}")
+    
+    # 既存のコマンドエージェントファイルを削除
+    for cmd_file in commands_agents_dir.glob("*.md"):
+        try:
+            cmd_file.unlink()
+            print(f"🗑️  コマンド削除: {cmd_file.name}")
+        except Exception as e:
+            print(f"⚠️  コマンド削除失敗: {cmd_file.name}: {e}")
     
     # mdcファイルを取得
     mdc_files = list(rules_dir.glob("*.mdc"))
@@ -214,6 +237,7 @@ def create_agents_from_mdc():
                 agent_file.write_text(content, encoding='utf-8')
                 print(f"📋 マスターファイルコピー: {filename} (.mdcのまま)")
                 success_count += 1
+                # コマンドディレクトリにはコピーしない（マスターファイルは除外）
                 continue
             
             # 通常のエージェントファイルは.mdに変換
@@ -241,6 +265,12 @@ description: {description}
             agent_file.write_text(agent_content, encoding='utf-8')
             
             print(f"✅ エージェント作成: {agent_name}")
+            
+            # コマンドディレクトリにもコピー（フロントマターなし、MD形式）
+            cmd_file = commands_agents_dir / f"{agent_name}.md"
+            cmd_file.write_text(content_without_frontmatter, encoding='utf-8')
+            print(f"📝 コマンド作成: {agent_name}")
+            
             success_count += 1
             
         except Exception as e:
@@ -365,11 +395,37 @@ def convert_agents_to_cursor(project_root: Path, dry_run: bool = False) -> bool:
     print(f"🎯 {'[DRY-RUN] ' if dry_run else ''}ルール作成{'予定' if dry_run else '完了'}: {success_count}/{len(agent_files)}")
     return success_count > 0
 
+def strip_always_apply_from_frontmatter(content: str) -> str:
+    """
+    フロントマターから alwaysApply フィールドを削除
+    マスターファイル生成時に使用
+    """
+    import re
+
+    # フロントマターを検出
+    frontmatter_pattern = r'^---\s*\n(.*?)\n---\s*\n'
+    match = re.match(frontmatter_pattern, content, re.DOTALL)
+
+    if not match:
+        return content
+
+    frontmatter_content = match.group(1)
+    body_content = content[match.end():]
+
+    # alwaysApply行を削除
+    frontmatter_lines = frontmatter_content.split('\n')
+    filtered_lines = [line for line in frontmatter_lines if 'alwaysApply' not in line]
+
+    # 新しいフロントマターを構築
+    new_frontmatter = '---\n' + '\n'.join(filtered_lines) + '\n---\n'
+
+    return new_frontmatter + body_content
+
 def update_master_files_only(project_root: Path, dry_run: bool = False) -> bool:
     """
     マスターファイル（CLAUDE.md、AGENTS.md等）の更新のみを実行
     """
-    
+
     # 最新のルールディレクトリパス
     rules_dir = project_root / ".cursor" / "rules"
     if not rules_dir.exists():
@@ -378,25 +434,25 @@ def update_master_files_only(project_root: Path, dry_run: bool = False) -> bool:
 
     # 00を含む.mdcファイルとpathを含む.mdcファイルを順序指定で検索
     target_files = []
-    
+
     # 1. まず00を含むファイルを追加（ルール定義）
     for mdc_file in rules_dir.glob("*.mdc"):
         filename = mdc_file.name
         if "00" in filename:
             target_files.append(mdc_file)
             print(f"🎯 対象ファイル発見（ルール定義）: {filename}")
-    
+
     # 2. 次にpathを含むファイルを追加（パス定義）
     for mdc_file in rules_dir.glob("*.mdc"):
         filename = mdc_file.name
         if "path" in filename and mdc_file not in target_files:
             target_files.append(mdc_file)
             print(f"🎯 対象ファイル発見（パス定義）: {filename}")
-    
+
     if not target_files:
         print("❌ 対象ファイル（00を含む.mdcまたはpathを含む.mdc）が見つかりません")
         return agent_success  # エージェント作成が成功していれば部分的成功とする
-    
+
     output_files = [
         project_root / "CLAUDE.md",
         project_root / "AGENTS.md",
@@ -404,47 +460,57 @@ def update_master_files_only(project_root: Path, dry_run: bool = False) -> bool:
         project_root / ".kiro" / "steering" / "KIRO.md",
         project_root / ".github" / "copilot-instructions.md"
     ]
-    
+
     print("\n🔄 エージェントマスターファイル更新スクリプト開始")
     print(f"🖥️  プラットフォーム: {platform.system()}")
-    
+
     collected_content = []
-    
-    for file_path in target_files:
+
+    for idx, file_path in enumerate(target_files):
         try:
             relative_path = file_path.relative_to(project_root)
             print(f"📖 読み込み中: {relative_path}")
         except ValueError:
             print(f"📖 読み込み中: {file_path}")
-        
-        filename, content = read_file_content(file_path)
-        
-        if filename and content:
-            collected_content.append(content)
-            # 最後のファイル以外は区切りとして改行を追加
-            if file_path != target_files[-1]:
-                collected_content.append("\n\n")
-            print(f"✅ 読み込み完了: {filename} ({len(content)} 文字)")
+
+        # 最初のファイル（00_master_rules.mdc）はフロントマターを保持するが、alwaysApplyを削除
+        if idx == 0:
+            try:
+                content = file_path.read_text(encoding='utf-8')
+                # alwaysApplyを削除
+                content = strip_always_apply_from_frontmatter(content)
+                filename = file_path.name
+                print(f"✅ 読み込み完了（フロントマター保持・alwaysApply削除）: {filename} ({len(content)} 文字)")
+                collected_content.append(content)
+            except Exception as e:
+                print(f"❌ ファイル読み込みエラー {file_path}: {e}")
+                continue
         else:
-            print(f"⚠️  スキップ: {file_path.name}")
+            # それ以外のファイルはフロントマターを削除
+            filename, content = read_file_content(file_path)
+            if filename and content:
+                collected_content.append(content)
+                print(f"✅ 読み込み完了: {filename} ({len(content)} 文字)")
+            else:
+                print(f"⚠️  スキップ: {file_path.name}")
+                continue
+
+        # 最後のファイル以外は区切りとして改行を追加
+        if file_path != target_files[-1]:
+            collected_content.append("\n\n")
     
     if not collected_content:
         print("❌ 処理対象のファイルから内容を読み込めませんでした。")
         return False
-    
-    # 警告メッセージを作成
-    warning_message = "# ⚠️ 重要: このファイルは自動生成されています\n"
-    warning_message += "# ルールを修正する場合は .cursor/rules ディレクトリ内の .mdc ファイルを編集してください\n"
-    warning_message += "# 直接このファイルを編集しないでください - 変更は上書きされます\n\n"
-    
+
     # 収集したコンテンツをエージェントパスに変換
     processed_content = []
     for content in collected_content:
         # call XXX.mdc パターンを .claude/agents/XXX.md に変換
         processed_content.append(convert_mdc_paths_to_agent_paths(content))
-    
-    # 警告メッセージと収集したコンテンツを結合
-    full_content = warning_message + "".join(processed_content)
+
+    # 収集したコンテンツを結合
+    full_content = "".join(processed_content)
     
     success_count = 0
     for output_file in output_files:
