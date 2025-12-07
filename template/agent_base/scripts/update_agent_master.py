@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """
-双方向エージェント変換・マスターファイル更新スクリプト
-.cursor/rules/*.mdc ⇔ .claude/agents/*.md の双方向変換、および
-マスターとなる .mdc ファイル群の内容を抽出し、結合して AGENTS.md、CLAUDE.md、.gemini/GEMINI.md、.kiro/steering/KIRO.md に書き込みます。
+双方向エージェント変換・マスターファイル更新・コマンド同期スクリプト
+
+機能:
+  1. .cursor/rules/*.mdc ⇔ .claude/agents/*.md の双方向変換
+  2. マスターファイル更新（AGENTS.md、CLAUDE.md、.gemini/GEMINI.md、.kiro/steering/KIRO.md）
+  3. コマンド同期: .cursor/commands → .codex/prompts, .claude/commands
 
 使用例:
-python scripts/update_agent_master.py                    # デフォルト（cursor→agents + マスター更新）
-python scripts/update_agent_master.py --source cursor    # cursor→agents + マスター更新
-python scripts/update_agent_master.py --source agents    # agents→cursor のみ
-python scripts/update_agent_master.py --dry-run          # ドライラン（変更なし）
+  python scripts/update_agent_master.py                    # デフォルト（変換 + マスター更新 + コマンド同期）
+  python scripts/update_agent_master.py --source cursor    # cursor→agents + マスター更新 + コマンド同期
+  python scripts/update_agent_master.py --source agents    # agents→cursor のみ
+  python scripts/update_agent_master.py --dry-run          # ドライラン（変更なし）
 """
 
 import os
@@ -180,7 +183,8 @@ def create_agents_from_mdc():
     """
     mdcファイルを.claude/agentsにコピーしてエージェントファイルとして変換する
     00とpathを含むファイルは.mdcのままフロントマター変更なしでコピー
-    さらに、.cursor/commands/agents/にもフロントマターを削除したMD形式でコピーする
+    さらに、.cursor/commands/agents_commands、.codex/prompts、.claude/commandsにも
+    フロントマターを削除したMD形式でコピーする
     """
     project_root = get_root_directory()
     rules_dir = project_root / ".cursor" / "rules"
@@ -205,12 +209,13 @@ def create_agents_from_mdc():
                 print(f"⚠️  削除失敗: {agent_file.name}: {e}")
     
     # 既存のコマンドエージェントファイルを削除
-    for cmd_file in commands_agents_dir.glob("*.md"):
-        try:
-            cmd_file.unlink()
-            print(f"🗑️  コマンド削除: {cmd_file.name}")
-        except Exception as e:
-            print(f"⚠️  コマンド削除失敗: {cmd_file.name}: {e}")
+    if commands_agents_dir.exists():
+        for cmd_file in commands_agents_dir.glob("*.md"):
+            try:
+                cmd_file.unlink()
+                print(f"🗑️  コマンド削除: {cmd_file.name}")
+            except Exception as e:
+                print(f"⚠️  コマンド削除失敗: {cmd_file.name}: {e}")
     
     # mdcファイルを取得
     mdc_files = list(rules_dir.glob("*.mdc"))
@@ -266,10 +271,10 @@ description: {description}
             
             print(f"✅ エージェント作成: {agent_name}")
             
-            # コマンドディレクトリにもコピー（フロントマターなし、MD形式）
+            # .cursor/commands/agents_commands にもコピー（フロントマターなし、MD形式）
             cmd_file = commands_agents_dir / f"{agent_name}.md"
             cmd_file.write_text(content_without_frontmatter, encoding='utf-8')
-            print(f"📝 コマンド作成: {agent_name}")
+            print(f"📝 コマンド作成 (.cursor/commands/agents_commands): {agent_name}")
             
             success_count += 1
             
@@ -278,6 +283,71 @@ description: {description}
     
     print(f"🎯 エージェント作成完了: {success_count}/{len(mdc_files)}")
     return success_count > 0
+
+def sync_commands_to_codex_and_claude(project_root: Path, dry_run: bool = False) -> bool:
+    """
+    .cursor/commands 全体を .codex/prompts と .claude/commands にコピーする
+    """
+    source_dir = project_root / ".cursor" / "commands"
+    codex_prompts_dir = project_root / ".codex" / "prompts"
+    claude_commands_dir = project_root / ".claude" / "commands"
+    
+    if not source_dir.exists():
+        print(f"⚠️  ソースディレクトリが見つかりません: {source_dir}")
+        return False
+    
+    # コピー先ディレクトリを作成
+    if not dry_run:
+        codex_prompts_dir.mkdir(parents=True, exist_ok=True)
+        claude_commands_dir.mkdir(parents=True, exist_ok=True)
+        print(f"📁 Codexプロンプトディレクトリ準備完了: {codex_prompts_dir}")
+        print(f"📁 Claudeコマンドディレクトリ準備完了: {claude_commands_dir}")
+    
+    # コピー先の既存ファイルを削除
+    target_dirs = [
+        (codex_prompts_dir, ".codex/prompts"),
+        (claude_commands_dir, ".claude/commands")
+    ]
+    
+    for target_dir, dir_name in target_dirs:
+        if not dry_run and target_dir.exists():
+            for existing_file in target_dir.rglob("*"):
+                if existing_file.is_file():
+                    try:
+                        existing_file.unlink()
+                        print(f"🗑️  削除 ({dir_name}): {existing_file.relative_to(target_dir)}")
+                    except Exception as e:
+                        print(f"⚠️  削除失敗 ({dir_name}): {existing_file.name}: {e}")
+    
+    # .cursor/commands 内のすべてのファイルを再帰的にコピー
+    copied_count = 0
+    for source_file in source_dir.rglob("*"):
+        if source_file.is_file():
+            try:
+                # ソースファイルの相対パスを取得
+                relative_path = source_file.relative_to(source_dir)
+                
+                # 各コピー先にコピー
+                for target_dir, dir_name in target_dirs:
+                    target_file = target_dir / relative_path
+                    
+                    if dry_run:
+                        print(f"🔍 [DRY-RUN] コピー予定 ({dir_name}): {relative_path}")
+                    else:
+                        # 親ディレクトリを作成
+                        target_file.parent.mkdir(parents=True, exist_ok=True)
+                        # ファイルをコピー
+                        import shutil
+                        shutil.copy2(source_file, target_file)
+                        print(f"📋 コピー完了 ({dir_name}): {relative_path}")
+                
+                copied_count += 1
+                
+            except Exception as e:
+                print(f"❌ コピー失敗 {source_file.name}: {e}")
+    
+    print(f"🎯 {'[DRY-RUN] ' if dry_run else ''}コマンド同期{'予定' if dry_run else '完了'}: {copied_count}ファイル")
+    return copied_count > 0
 
 def extract_description_from_frontmatter(content):
     """
@@ -393,6 +463,133 @@ def convert_agents_to_cursor(project_root: Path, dry_run: bool = False) -> bool:
             print(f"❌ 変換失敗 {agent_file.name}: {e}")
     
     print(f"🎯 {'[DRY-RUN] ' if dry_run else ''}ルール作成{'予定' if dry_run else '完了'}: {success_count}/{len(agent_files)}")
+    return success_count > 0
+
+def create_skills_from_mdc(project_root: Path, dry_run: bool = False) -> bool:
+    """
+    .cursor/rules/*.mdc → .claude/skills/<skill-name>/SKILL.md 変換
+    機能:
+    1. フォルダ作成
+    2. paths.md の同梱（フロントマター除去）
+    3. 使用スクリプトの検出・同梱・パス書き換え
+    4. path_reference の書き換え
+    """
+    import shutil
+    
+    rules_dir = project_root / ".cursor" / "rules"
+    skills_dir = project_root / ".claude" / "skills"
+    scripts_origin_dir = project_root / "scripts"
+    
+    if not rules_dir.exists():
+        print(f"❌ .cursor/rulesディレクトリが見つかりません: {rules_dir}")
+        return False
+    
+    # パスファイルを特定 (pmbok_paths.mdcを想定)
+    paths_source_file = next(rules_dir.glob("*paths.mdc"), None)
+    paths_content = ""
+    if paths_source_file:
+        paths_content = remove_frontmatter(paths_source_file.read_text(encoding='utf-8'))
+    
+    mdc_files = list(rules_dir.glob("*.mdc"))
+    if not mdc_files:
+        print("❌ .mdcファイルが見つかりません")
+        return False
+        
+    print(f"📋 {len(mdc_files)}個の.mdcファイルをスキルへ変換開始")
+    
+    success_count = 0
+    for mdc_file in sorted(mdc_files):
+        try:
+            filename = mdc_file.name
+            stem = mdc_file.stem
+            
+            # パスファイル自体はスキル化しない（各スキルに同梱されるため）
+            if "paths" in filename.lower():
+                continue
+
+            # スキル名の決定
+            clean_name = re.sub(r'^\d+_', '', stem)
+            skill_name = clean_name.replace('_', '-').lower()
+            
+            # 特別なファイル名の処理
+            if "00" in filename:
+                # 00_master_rules はスキル化しない
+                continue
+            
+            skill_dir = skills_dir / skill_name
+            
+            if not dry_run:
+                skill_dir.mkdir(parents=True, exist_ok=True)
+            
+            # --- 1. paths.md の同梱 ---
+            if paths_source_file:
+                dest_paths = skill_dir / "paths.md"
+                if dry_run:
+                    print(f"🔍 [DRY-RUN] ({skill_name}) paths.md を同梱")
+                else:
+                    dest_paths.write_text(paths_content, encoding='utf-8')
+
+            # --- 2. コンテンツの準備 ---
+            content = mdc_file.read_text(encoding='utf-8')
+            frontmatter_dict, body = parse_frontmatter(content)
+            description = frontmatter_dict.get('description', f'{skill_name} skill')
+            if not description:
+                description = f"Skill for {skill_name}"
+
+            # --- 3. パス参照の書き換え ---
+            # path_reference: "pmbok_paths.mdc" -> path_reference: "paths.md"
+            body = re.sub(r'path_reference:\s*"?[^"\n]*paths\.mdc"?', 'path_reference: "paths.md"', body)
+
+            # --- 4. スクリプトの検出・同梱・書き換え ---
+            # パターン: {{root}}/scripts/xxx.py または scripts/xxx.py
+            # 拡張子: .py, .sh, .ps1
+            def replace_script_path(match):
+                full_match = match.group(0) # マッチ全体 (例: {{root}}/scripts/tasks.py)
+                script_name = match.group(1) # ファイル名 (例: tasks.py)
+                
+                src_script = scripts_origin_dir / script_name
+                
+                if src_script.exists():
+                    # スクリプトをスキル内 scripts/ にコピー
+                    skill_scripts_dir = skill_dir / "scripts"
+                    if not dry_run:
+                        skill_scripts_dir.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(src_script, skill_scripts_dir / script_name)
+                        # print(f"📦 ({skill_name}) スクリプト同梱: {script_name}")
+                    else:
+                        print(f"🔍 [DRY-RUN] ({skill_name}) スクリプト同梱: {script_name}")
+                    
+                    # 本文中のパスを相対パスに書き換え
+                    return f"scripts/{script_name}"
+                else:
+                    return full_match
+
+            # 正規表現: ({{root}}/)?scripts/(ファイル名)
+            script_pattern = r'(?:\{\{root\}\}/)?scripts/([\w\-]+\.(?:py|sh|ps1))'
+            body = re.sub(script_pattern, replace_script_path, body)
+
+            # --- 5. SKILL.md 生成 ---
+            new_frontmatter = f"""---
+name: {skill_name}
+description: {description}
+---
+
+"""
+            skill_content = new_frontmatter + body
+            skill_file = skill_dir / "SKILL.md"
+            
+            if dry_run:
+                print(f"🔍 [DRY-RUN] スキル作成: {skill_name}")
+            else:
+                skill_file.write_text(skill_content, encoding='utf-8')
+                print(f"✅ スキル作成: {skill_name}")
+            
+            success_count += 1
+            
+        except Exception as e:
+            print(f"❌ スキル変換失敗 {mdc_file.name}: {e}")
+            
+    print(f"🎯 {'[DRY-RUN] ' if dry_run else ''}スキル作成{'予定' if dry_run else '完了'}: {success_count}")
     return success_count > 0
 
 def strip_always_apply_from_frontmatter(content: str) -> str:
@@ -585,6 +782,13 @@ def main():
             else:
                 print("🤖 [DRY-RUN] エージェントファイル作成予定")
                 conversion_success = True
+            
+            # cursor→skills変換 (追加機能)
+            print(f"\n📤 .cursor/rules/*.mdc → .claude/skills/*/SKILL.md 変換開始")
+            skills_success = create_skills_from_mdc(project_root, args.dry_run)
+            if not skills_success:
+                print("⚠️ スキル変換に失敗したか、ファイルがありませんでした")
+
         elif args.source == 'agents':
             # agents→cursor変換
             print(f"\n📤 .claude/agents/*.md → .cursor/rules/*.mdc 変換開始")
@@ -594,7 +798,11 @@ def main():
         print(f"\n📋 マスターファイル更新開始")
         master_success = update_master_files_only(project_root, args.dry_run)
         
-        success = conversion_success and master_success
+        # コマンド同期: .cursor/commands → .codex/prompts, .claude/commands
+        print(f"\n📋 コマンド同期開始")
+        command_sync_success = sync_commands_to_codex_and_claude(project_root, args.dry_run)
+        
+        success = conversion_success and master_success and command_sync_success
         
         if success:
             if args.dry_run:
