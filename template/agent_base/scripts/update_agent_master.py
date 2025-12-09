@@ -363,24 +363,47 @@ def extract_description_from_frontmatter(content):
 def convert_mdc_paths_to_agent_paths(content):
     """
     コンテンツ内の .mdc ファイル参照を .claude/agents/*.md に変換
+
+    対応形式:
+    1. 旧形式: action: "call ファイル名.mdc => ..."
+    2. v2形式: rule: ".cursor/rules/XX.mdc"
     """
+    # 1. 旧形式: action: "call ファイル名.mdc パターン
     def replace_call_path(match):
-        # match.group(1) は action: "call の部分
-        # match.group(2) は ファイル名.mdc の部分  
         prefix = match.group(1)
         mdc_filename = match.group(2)
-        
-        # .mdc を .md に変更し、パスを追加
+
         if mdc_filename.endswith('.mdc'):
             agent_filename = mdc_filename.replace('.mdc', '.md')
             return f'{prefix}.claude/agents/{agent_filename}'
-        
+
         return match.group(0)
-    
-    # action: "call ファイル名.mdc パターンを検索・置換
-    pattern = r'(action:\s*"call\s+)([^"\s=>]+\.mdc)'
-    converted_content = re.sub(pattern, replace_call_path, content)
-    
+
+    pattern_old = r'(action:\s*"call\s+)([^"\s=>]+\.mdc)'
+    converted_content = re.sub(pattern_old, replace_call_path, content)
+
+    # 2. v2形式: rule: ".cursor/rules/XX.mdc" パターン
+    def replace_rule_path(match):
+        prefix = match.group(1)  # 'rule: "'
+        mdc_path = match.group(2)  # '.cursor/rules/XX.mdc' or similar
+
+        # パスからファイル名を抽出
+        if '/' in mdc_path:
+            filename = mdc_path.split('/')[-1]
+        else:
+            filename = mdc_path
+
+        # .mdc を .md に変更
+        if filename.endswith('.mdc'):
+            agent_filename = filename.replace('.mdc', '.md')
+            return f'{prefix}.claude/agents/{agent_filename}"'
+
+        return match.group(0)
+
+    # rule: ".cursor/rules/XX.mdc" または rule: "XX.mdc" パターン
+    pattern_v2 = r'(rule:\s*")([^"]+\.mdc)"'
+    converted_content = re.sub(pattern_v2, replace_rule_path, converted_content)
+
     return converted_content
 
 def convert_agents_to_cursor(project_root: Path, dry_run: bool = False) -> bool:
