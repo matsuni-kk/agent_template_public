@@ -198,10 +198,20 @@ agent_creation_workflow:
           - "ブラッシュアップを選択した場合は対話を続け、反映内容を Flow 側ドラフトに落とし込む。"
           - "プライベートリポジトリを選択した場合は対象フォルダのみを新規リポジトリとして初期化し、リモートをプライベート設定で作成・push する。"
   master_trigger_registration:
-    guidelines:
-      - "トリガーは # ========================= / 1–N. Domain Rules (01–89) / ========================= 配下に追加する。"
-      - "開始メッセージ・既存情報収集・質問呼び出し・成果物作成・完了メッセージの5ステップを最低構成とする。"
-      - "Discoveryで確定した命名規則を反映し、pathは {{patterns.xxx}}、template_reference は NN_{domain}_{function}.mdc => セクション名 に統一する。"
+    description: "00_master_rules.mdc の master_triggers セクションに追加するトリガー定義。3フィールドのみで構成。"
+    required_fields:
+      - field: "trigger"
+        description: "正規表現パターン。複数の表記を | で区切る"
+        example: "(プロジェクト初期化|プロジェクト開始|プロジェクト立ち上げ)"
+      - field: "rule"
+        description: ".cursor/rules/XX.mdc のパス"
+        example: ".cursor/rules/01_pmbok_initiating.mdc"
+      - field: "description"
+        description: "処理内容の簡潔な説明"
+        example: "プロジェクト初期化関連の処理を実行"
+    readability_guidelines:
+      - "可読性のため、フェーズ見出しは #============================ で上下を囲む（3行構造）。"
+      - "可読性のため、機能グループ見出しは #-------------------------------------------- で上下を囲む（3行構造）。"
     example:
       language: "yaml"
       snippet: |-
@@ -210,22 +220,12 @@ agent_creation_workflow:
           # 映画分析フェーズ (A-01. movie_analysis)
           # -----
           - trigger: "(映画分析|映画調査|映画レビュー|movie analysis)"
-            priority: high
-            steps:
-              - name: "start_movie_analysis"
-                action: "message"
-                content: "**映画分析フェーズを開始します。**\n\n必要な情報を順次お聞きしますので、具体的にご回答ください。"
-              - name: "collect_existing_info"
-                action: "gather_existing_info"
-              - name: "ask_movie_analysis_questions"
-                action: "call 01_movie_analysis.mdc => movie_analysis_questions"
-              - name: "create_analysis_draft"
-                action: "create_markdown_file"
-                path: "{{patterns.draft_movie_analysis}}"
-                template_reference: "01_movie_analysis.mdc => movie_analysis_template"
-              - name: "completion_message"
-                action: "message"
-                content: "**映画分析フェーズを完了しました。**\n\n保存場所: `{{patterns.draft_movie_analysis}}`\nレビュー後に必要な対応を実施してください。"
+            rule: ".cursor/rules/01_movie_analysis.mdc"
+            description: "映画分析フェーズの処理を実行"
+    validation_rules:
+      - "trigger: 必須。正規表現パターン（文字列）"
+      - "rule: 必須。.cursor/rules/*.mdc 形式のパス"
+      - "description: 必須。処理内容の説明文"
 
 
 # =========================
@@ -331,34 +331,12 @@ quick_reference:
         - "レビュー報告"
         - "改善タスクリスト"
   master_rule_trigger_template:
-    usage_note: "00_master_rules.mdc のドメインルール帯に追加する完全フォーマット"
+    usage_note: "00_master_rules.mdc の master_triggers セクションに追加するフォーマット（3フィールドのみ）"
     snippet: |-
-      ### {機能名}
+      # ----- {機能名} -----
       - trigger: "({ドメイン固有トリガー}|{同義語}|{英語表記})"
-        priority: high
-        steps:
-          - name: "start_message"
-            action: "message"
-            content: "**{機能名}を開始します。**\n\n必要な情報を順次お聞きしますので、可能な限り具体的にお答えください。"
-          - name: "collect_existing_info"
-            action: "gather_existing_info"
-          - name: "create_framework_log"
-            action: "create_markdown_file"
-            path: "Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}}/framework_research.md"
-            template_reference: "00_master_rules.mdc => framework_research_template"
-          - name: "framework_research_gate"
-            action: "conditional_step"
-            parameters:
-              condition: "{{framework_research_done}} == true"
-              true_action: "call 0X_{domain}_{function}.mdc => {function}_questions"
-              false_action: "message: 'フレームワーク調査ログが未完了です。Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}}/framework_research.md を記入し、framework_research_done=true を指定して再実行してください。'"
-          - name: "create_output"
-            action: "create_markdown_file"
-            path: "{{patterns.output_{document_type}}}"
-            template_reference: "0X_{domain}_{function}.mdc => {function}_template"
-          - name: "completion_message"
-            action: "message"
-            content: "**{機能名}を完了しました。**\n\n保存場所: `{{patterns.output_{document_type}}}`\n\n【Flowワークフローの場合】\n- ドラフトを確認・編集してください\n- 完成したら「Stock移行」で確定版へ\n\n【直接変換の場合】\n- ファイルは即座に使用可能です"
+        rule: ".cursor/rules/0X_{domain}_{function}.mdc"
+        description: "{機能名}関連の処理を実行"
 
 
 #### 使用可能なactionの完全リスト
@@ -429,8 +407,8 @@ implementation_requirements:
   fundamentals:
     structure_rules:
       - "trigger: 複数の表記を | で区切って包括的に設定する。"
-      - "priority: high/medium/low で優先度を設定する。"
-      - "steps: 最低5ステップで構成する。"
+      - "rule: .cursor/rules/*.mdc 形式でルールファイルのパスを指定する。"
+      - "description: 処理内容の簡潔な説明を記載する。"
     default_step_flow:
       - order: 1
         action: "start_message"
@@ -456,6 +434,12 @@ implementation_requirements:
       - type: "直接変換"
         sequence:
           - "入力内容を最終ファイルに直接反映する"
+      - type: "テンプレート不要（開発・スクリプト・API連携）"
+        sequence:
+          - "パラメータ収集（質問 or 既存情報から）"
+          - "スクリプト/コマンド/API実行"
+          - "実行結果をログ出力（Flow配下）"
+        note: "定型ドキュメントを生成しない機能。テンプレートセクションは省略し、実行手順・コマンド・パラメータ・期待結果を明記する。"
     parameter_rules:
       - "path は {{patterns.xxx}} 形式で参照する。"
       - "template_reference は ファイル名.mdc => セクション名 形式で統一する。"
@@ -493,7 +477,7 @@ implementation_requirements:
                 prompt: "質問文"
                 type: "text|multiline"
                 required: true|false
-      template_rule: "*_template: | 形式で即使用可能なテンプレートを定義する。"
+      template_rule: "*_template: | 形式で即使用可能なテンプレートを定義する。ただし、開発タスク・スクリプト実行・API呼び出し・コマンド実行など、定型ドキュメントを生成しない機能ではテンプレートは不要。その場合は template セクション自体を省略し、代わりに実行手順・パラメータ・期待結果を明記する。"
     naming_conventions:
       - "00: 00_master_rules.mdc"
       - "01〜: NN_{domain}_{function}.mdc（NNは2桁ゼロ埋め）"
@@ -505,7 +489,7 @@ implementation_requirements:
     - "フロントマターと path_reference を必ず記載する。"
     - "タイトル帯・Phase帯・下位区切りを規格通りに配置する。"
     - "質問は prompt/type/required 形式で定義する。"
-    - "テンプレートは即使用可能な品質に仕上げる。"
+    - "テンプレートは即使用可能な品質に仕上げる（ドキュメント生成を伴わない開発・スクリプト実行・API連携機能ではテンプレート不要、実行手順を明記）。"
     - "00 の ai_instructions に新規ルール書式方針を明記する。"
   master_rule_structure_guide:
     - "フロントマターと globs を保持し path_reference と ai_instructions を管理する。"
@@ -521,7 +505,7 @@ implementation_requirements:
       prompt_why_questions: |
         ＜なぜ質問が必要か／何を揃えるかを1-4行で＞
       prompt_why_templates: |
-        ＜テンプレートを使う理由（1-3行）＞
+        ＜テンプレートを使う理由（1-3行）。開発・スクリプト実行・API連携など定型ドキュメントを生成しない機能では「テンプレート不要：実行手順とパラメータを本セクションに記載」と明記する＞
       prompt_principles: |
       　 ＜運用原則＞
     system_capabilities_template: |-
@@ -955,136 +939,33 @@ post_generation_workflow:
           - "draft_compliance_check"
           - "draft_risk_assessment"
   master_rule_integration:
-    note: "00_master_rules.mdc の A-01-XX. Domain Specific Rules にトリガーを追加する。"
+    note: "00_master_rules.mdc の master_triggers セクションにトリガーを追加する（3フィールドのみ）。"
     example_snippet: |-
-      ## A-01-01. Project Initialization Rules
+      master_triggers:
+        # ----- A-01-01. Project Initialization -----
+        - trigger: "({domain}プロジェクト開始|{domain}初期化|新規{domain}プロジェクト|プロジェクト開始)"
+          rule: ".cursor/rules/01_{domain}_initialization.mdc"
+          description: "プロジェクト初期化関連の処理を実行"
 
-      ### プロジェクト初期化  
-      - trigger: "({domain}プロジェクト開始|{domain}初期化|新規{domain}プロジェクト|プロジェクト開始)"
-        priority: high
-        steps:
-          - name: "welcome_message"
-            action: "message"
-            content: "**{AgentName}エージェントを開始します。**
+        # ----- A-01-02. Requirements Analysis -----
+        - trigger: "(要件分析|要件定義|requirements analysis)"
+          rule: ".cursor/rules/02_requirements_analysis.mdc"
+          description: "要件分析関連の処理を実行"
 
-新しいプロジェクトの初期化を行います。基本情報をお聞きしますので、お答えください。"
-          - name: "start_info_collection"
-            action: "call 01_{domain}_initialization.mdc => project_init_questions"
-            - name: "create_project_structure"
-              action: "execute_shell"
-              command: "mkdir -p {{patterns.flow_day_dir}}/{{meta.agent_dir}} {{patterns.stock_documents_dir}} {{patterns.stock_images_dir}} Archived/keep"
-          - name: "create_readme"
-            action: "create_markdown_file"
-            path: "README.md"
-            template_reference: "01_{domain}_initialization.mdc => project_readme_template"
-          - name: "completion_message"
-            action: "message"
-            content: "**プロジェクトの初期化が完了しました。**
+        # ----- A-01-03. Design Documentation -----
+        - trigger: "(設計書作成|設計|design documentation)"
+          rule: ".cursor/rules/03_design_documentation.mdc"
+          description: "設計書作成関連の処理を実行"
 
-プロジェクト概要: `README.md`
-作業ディレクトリ構造を作成済み
+        # ----- A-01-04. Progress Report -----
+        - trigger: "(進捗報告|progress report|状況報告)"
+          rule: ".cursor/rules/04_progress_report.mdc"
+          description: "進捗報告関連の処理を実行"
 
-次のステップでは、具体的な{domain}業務を開始できます。"
-
-      ### 要件分析
-      - trigger: "(要件分析|要件定義|requirements analysis)"
-        priority: high
-        steps:
-          - name: "start_requirements"
-            action: "message"
-            content: "**要件分析を開始します。**
-
-現在の状況と要件について詳しくお聞きします。"
-          - name: "collect_existing_info"
-            action: "gather_existing_info"
-          - name: "ask_requirements_questions"
-            action: "call 02_requirements_analysis.mdc => requirements_analysis_questions"
-          - name: "create_requirements_draft"
-            action: "create_markdown_file"
-            path: "{{patterns.draft_requirements}}"
-            template_reference: "02_requirements_analysis.mdc => requirements_analysis_template"
-          - name: "requirements_completion"
-            action: "message"
-            content: "**要件分析ドラフトを作成しました。**
-
-保存場所: `{{patterns.draft_requirements}}`
-
-内容を確認し、必要に応じて修正してください。完成したら「Stock移行」で確定版にできます。"
-
-      ### 設計書作成
-      - trigger: "(設計書作成|設計|design documentation)"
-        priority: high
-        steps:
-          - name: "start_design"
-            action: "message"
-            content: "**設計書作成を開始します。**
-
-設計に関する情報を詳しくお聞きします。"
-          - name: "collect_existing_info"
-            action: "gather_existing_info"
-          - name: "ask_design_questions"
-            action: "call 03_design_documentation.mdc => design_documentation_questions"
-          - name: "create_design_draft"
-            action: "create_markdown_file"
-            path: "{{patterns.draft_design}}"
-            template_reference: "03_design_documentation.mdc => design_documentation_template"
-          - name: "design_completion"
-            action: "message"
-            content: "**設計書ドラフトを作成しました。**
-
-保存場所: `{{patterns.draft_design}}`
-
-技術的な詳細や図表を追加して完成させてください。"
-
-      ### 進捗報告
-      - trigger: "(進捗報告|progress report|状況報告)"
-        priority: medium
-        steps:
-          - name: "start_progress"
-            action: "message"
-            content: "**進捗報告を開始します。**
-
-現在の進捗状況についてお聞きします。"
-          - name: "collect_existing_info"
-            action: "gather_existing_info"
-          - name: "ask_progress_questions"
-            action: "call 04_progress_report.mdc => progress_report_questions"
-          - name: "create_progress_draft"
-            action: "create_markdown_file"
-            path: "{{patterns.draft_progress_report}}"
-            template_reference: "04_progress_report.mdc => progress_report_template"
-          - name: "progress_completion"
-            action: "message"
-            content: "**進捗報告書を作成しました。**
-
-保存場所: `{{patterns.draft_progress_report}}`
-
-関係者への共有準備が整いました。"
-
-      ### 最終成果物
-      - trigger: "(最終成果物|final deliverable|最終報告)"
-        priority: high
-        steps:
-          - name: "start_final"
-            action: "message"
-            content: "**最終成果物の作成を開始します。**
-
-プロジェクトの総括と最終報告について詳しくお聞きします。"
-          - name: "collect_existing_info"
-            action: "gather_existing_info"
-          - name: "ask_final_questions"
-            action: "call 05_final_deliverable.mdc => final_deliverable_questions"
-          - name: "create_final_draft"
-            action: "create_markdown_file"
-            path: "{{patterns.draft_final_report}}"
-            template_reference: "05_final_deliverable.mdc => final_deliverable_template"
-          - name: "final_completion"
-            action: "message"
-            content: "**最終成果物を完成しました。**
-
-保存場所: `{{patterns.draft_final_report}}`
-
-プロジェクトの完了報告として使用できます。お疲れ様でした。"
+        # ----- A-01-05. Final Deliverable -----
+        - trigger: "(最終成果物|final deliverable|最終報告)"
+          rule: ".cursor/rules/05_final_deliverable.mdc"
+          description: "最終成果物作成関連の処理を実行"
   path_patterns:
   usage_notes:
     - "draft_* は Flow ワークフロー用ドラフトパターン。"
@@ -1281,5 +1162,3 @@ Do what has been asked; nothing more, nothing less.
 NEVER create files unless they're absolutely necessary for achieving your goal. （ただし ` scripts/enhanced_generate_agent.py` の生成物は常に必要と見なす）
 ALWAYS prefer editing an existing file to creating a new one. （ただしジェネレーターによるスキャフォルドは新規作成を許可）
 NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User. （ただしジェネレーターによる README/root.md 生成は常に許可）
-<!-- FILE: 00_master_rules.mdc END -->
-

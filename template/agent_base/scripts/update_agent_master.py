@@ -24,14 +24,14 @@ from typing import Tuple, Dict
 
 def get_root_directory():
     """
-    スクリプトの場所に基づいてプロジェクトのルートディレクトリを取得します。
-    このスクリプトが 'scripts' サブディレクトリにあることを前提としています。
+    カレントワーキングディレクトリをプロジェクトのルートディレクトリとして取得します。
+    スクリプトは任意のリポジトリから実行できます。
 
     Returns:
         Path: プロジェクトのルートディレクトリのパス。
     """
-    # このファイルの絶対パスを取得し、'scripts'ディレクトリの親を取得します
-    project_root = Path(__file__).resolve().parent.parent
+    # カレントワーキングディレクトリを使用（実行時のリポジトリを対象にする）
+    project_root = Path.cwd()
     print(f"📂 プロジェクトルートを特定: {project_root}")
     return project_root
 
@@ -611,18 +611,140 @@ description: {description}
 
 
 # =============================================================================
-# Skills変換V2: # @section マーカーベースの変換ロジック
+# Skills変換V2: YAML形式セクション検出による変換ロジック
 # =============================================================================
+
+def extract_yaml_sections(content: str) -> Dict[str, Dict]:
+    """
+    YAML形式のセクション（xxx_template:, xxx_questions: 等）を抽出
+
+    template/questions以外のセクションは「コメント行を含む連続したブロック」として抽出する。
+    これにより、ビジュアルヘッダー（# ======== ... ========）やサブヘッダー（# ---- ... ----）、
+    コマンド定義（xxx:）などがまとまって保持される。
+
+    マーカーに依存せず、コンテンツのみで判定する。
+    セクション名のパターン:
+    - xxx_template: → type: template (個別抽出)
+    - xxx_questions: → type: questions (個別抽出)
+    - その他のトップレベルYAMLキー: → type: default (コメント含めてブロック抽出)
+
+    Args:
+        content: MDCファイルの本文
+
+    Returns:
+        Dict[section_name, {"content": str, "type": str}]
+    """
+    sections = {}
+
+    # YAML形式のトップレベルセクションを検出
+    # パターン: 行頭の identifier: (値がある場合は | で始まるか、次行にインデント)
+    yaml_section_pattern = re.compile(r'^([a-z][a-z0-9_]*):[ \t]*(\|)?[ \t]*$', re.MULTILINE)
+
+    lines = content.splitlines()
+    current_section = None
+    current_type = "default"
+    current_lines = []
+    current_indent = None
+    # default typeのセクション間のコメント行を蓄積
+    pending_comments = []
+
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+
+        # YAMLセクション開始をチェック
+        yaml_match = yaml_section_pattern.match(line)
+        if yaml_match:
+            # 前のセクションを保存
+            if current_section and current_lines:
+                sections[current_section] = {
+                    "content": "\n".join(current_lines).strip(),
+                    "type": current_type
+                }
+
+            # 新しいセクション開始
+            section_name = yaml_match.group(1)
+            has_pipe = yaml_match.group(2) == '|'
+
+            # セクションタイプを判定
+            # 注: prompt_で始まるセクションは常にdefault（SKILL.mdに残す）
+            # prompt_why_questions, prompt_why_templates等はquestionsやtemplateに分類しない
+            if section_name.startswith('prompt_'):
+                current_type = "default"
+            elif section_name.endswith('_template') or section_name == 'templates':
+                current_type = "template"
+            elif section_name.endswith('_questions') or section_name == 'questions':
+                current_type = "questions"
+            else:
+                current_type = "default"
+
+            current_section = section_name
+
+            # default typeの場合、pending_commentsをセクションの先頭に含める
+            if current_type == "default" and pending_comments:
+                current_lines = pending_comments + [line]  # YAMLキー行も含める
+                pending_comments = []
+            else:
+                # template/questionsの場合もYAMLキー行を含める
+                current_lines = [line]
+
+            current_indent = None
+            i += 1
+            continue
+
+        # 現在セクション内かチェック
+        if current_section:
+            # インデントされた行またはパイプ後のリテラルブロック
+            stripped = line.lstrip()
+            indent = len(line) - len(stripped)
+
+            if indent > 0 or line == '':
+                # インデントされた行 or 空行は現在のセクションに追加
+                if current_indent is None and indent > 0:
+                    current_indent = indent
+                current_lines.append(line)
+            elif stripped == '':
+                # 空行はセクション継続
+                current_lines.append(line)
+            else:
+                # 新しいトップレベル要素 → セクション終了
+                # このセクションを保存して、行を再処理
+                if current_lines:
+                    sections[current_section] = {
+                        "content": "\n".join(current_lines).strip(),
+                        "type": current_type
+                    }
+                current_section = None
+                current_lines = []
+                current_indent = None
+                continue  # この行を再処理
+        else:
+            # セクション外のコメント行やビジュアルヘッダーを蓄積
+            # 次のdefault typeセクションに含める
+            if line.startswith('#') or line.strip() == '':
+                pending_comments.append(line)
+            else:
+                # コメントでない非YAMLな行はクリア
+                pending_comments = []
+
+        i += 1
+
+    # 最後のセクションを保存
+    if current_section and current_lines:
+        sections[current_section] = {
+            "content": "\n".join(current_lines).strip(),
+            "type": current_type
+        }
+
+    return sections
+
 
 def extract_sections_v2(content: str) -> Dict[str, Dict]:
     """
-    明示的セクションマーカーを使用してセクションを抽出
+    セクションを抽出（YAML形式のみ）
 
-    マーカー形式（新形式）: # ======== @section[:type] section_name ========
-    マーカー形式（旧形式）: # @section[:type] section_name
-
-    @sectionマーカー行のみ出力から除去し、
-    ビジュアルヘッダー（# ======== xxx ========、@sectionを含まない）は保持する。
+    YAML形式（xxx_template:, xxx_questions:等）でセクションを検出。
+    ビジュアルヘッダー（# ======== xxx ========）は保持する。
 
     Args:
         content: MDCファイルの本文（フロントマター除去後）
@@ -631,62 +753,92 @@ def extract_sections_v2(content: str) -> Dict[str, Dict]:
         Dict[section_name, {"content": str, "type": str}]
         type: "default" | "questions" | "template" | "guide"
     """
-    sections = {}
-    current_section = None
-    current_type = "default"
-    current_lines = []
-    pre_section_lines = []  # マーカー前の内容（path_reference等）
+    # YAML形式のセクションを抽出
+    sections = extract_yaml_sections(content)
 
-    # マーカーパターン（新形式）: # ======== @section[:type] section_name ========
-    marker_pattern = re.compile(r"^#\s*=+\s*@section(?::(\w+))?\s+([a-z][a-z0-9_]*):?\s*=+\s*$")
-    # 旧形式マーカー（後方互換）: # @section[:type] section_name または # @section[:type] section_name:
-    legacy_marker_pattern = re.compile(r"^#\s*@section(?::(\w+))?\s+([a-z][a-z0-9_]*):?\s*$")
+    # 有効なセクションのみをフィルタリング
+    valid_sections = {}
+    for name, data in sections.items():
+        if is_valid_section_content(data["content"]):
+            valid_sections[name] = data
 
-    lines = content.splitlines()
+    return valid_sections
+
+
+def is_valid_section_name(name: str) -> bool:
+    """
+    セクション名が有効かどうかを判定
+
+    無効なケース:
+    - 空文字列
+    - "section_" のみ（マーカー抽出失敗）
+    - "section_" + 数字のみ（例: section_8, section__1）
+    - アンダースコアのみで構成
+    - 極端に短い名前（意味のない抽出）
+    - 汎用的すぎる名前（templates, questions等）
+    """
+    if not name:
+        return False
+    if name == "section_":
+        return False
+    # section_ で始まり、残りが数字やアンダースコアのみ
+    if name.startswith("section_"):
+        rest = name[8:]  # "section_" の後
+        if not rest or rest.replace("_", "").replace(" ", "").isdigit() or rest.replace("_", "") == "":
+            return False
+    if name.replace("_", "") == "":
+        return False
+    if len(name) < 3 and name != "_preamble":
+        return False
+    # 数字のみの名前も無効
+    if name.replace("_", "").isdigit():
+        return False
+    # 注: 名前での判定は行わない（templates等も有効なコンテンツがあれば生成する）
+    # コンテンツの文字数で判定は is_valid_section_content() で行う
+    return True
+
+
+def is_valid_section_content(content: str) -> bool:
+    """
+    セクションコンテンツが有効（実質的な内容がある）かどうかを判定
+
+    無効なケース:
+    - 空または空白のみ
+    - ビジュアルヘッダー行のみ（# ======== ... ========）
+    - 行数が3行未満で実質コンテンツなし
+    """
+    if not content:
+        return False
+
+    stripped = content.strip()
+    if not stripped:
+        return False
+
+    lines = stripped.splitlines()
+
+    # 実質的なコンテンツ行をカウント（ヘッダー行・空行を除く）
+    content_lines = []
     for line in lines:
-        # 新形式マーカーをチェック
-        marker_match = marker_pattern.match(line)
-        if not marker_match:
-            # 旧形式マーカーをチェック（後方互換）
-            marker_match = legacy_marker_pattern.match(line)
+        line_stripped = line.strip()
+        # 空行をスキップ
+        if not line_stripped:
+            continue
+        # ビジュアルヘッダー行をスキップ（# ======== ... ========）
+        if re.match(r'^#\s*=+.*=+\s*$', line_stripped):
+            continue
+        content_lines.append(line_stripped)
 
-        if marker_match:
-            # 前のセクションを保存
-            if current_section:
-                sections[current_section] = {
-                    "content": "\n".join(current_lines).strip(),
-                    "type": current_type
-                }
-            elif pre_section_lines:
-                sections["_preamble"] = {
-                    "content": "\n".join(pre_section_lines).strip(),
-                    "type": "default"
-                }
+    # 実質的なコンテンツが1行以上必要
+    if len(content_lines) < 1:
+        return False
 
-            # 新しいセクション開始
-            current_type = marker_match.group(1) or "default"
-            current_section = marker_match.group(2)
-            current_lines = []
-        else:
-            # @sectionマーカー以外は全て保持（ビジュアルヘッダー含む）
-            if current_section:
-                current_lines.append(line)
-            else:
-                pre_section_lines.append(line)
+    # 合計文字数も確認（最低10文字）
+    # 短いYAMLセクション（command: "xxx", description: "yyy"）も有効とする
+    total_chars = sum(len(line) for line in content_lines)
+    if total_chars < 10:
+        return False
 
-    # 最後のセクションを保存
-    if current_section:
-        sections[current_section] = {
-            "content": "\n".join(current_lines).strip(),
-            "type": current_type
-        }
-    elif pre_section_lines and "_preamble" not in sections:
-        sections["_preamble"] = {
-            "content": "\n".join(pre_section_lines).strip(),
-            "type": "default"
-        }
-
-    return sections
+    return True
 
 
 def split_sections_by_type(sections: Dict[str, Dict]) -> Dict[str, Dict[str, str]]:
@@ -710,8 +862,16 @@ def split_sections_by_type(sections: Dict[str, Dict]) -> Dict[str, Dict[str, str
     }
 
     for name, data in sections.items():
+        # 無効なセクション名をスキップ
+        if not is_valid_section_name(name):
+            continue
+
         section_type = data["type"]
         content = data["content"]
+
+        # コンテンツが実質空かどうかを検証
+        if not is_valid_section_content(content):
+            continue
 
         if section_type == "questions":
             result["questions"][name] = content
@@ -726,7 +886,9 @@ def split_sections_by_type(sections: Dict[str, Dict]) -> Dict[str, Dict[str, str
     return result
 
 
-def build_skill_md(skill_name: str, description: str, sections: Dict[str, str], target_env: str = "claude") -> str:
+def build_skill_md(skill_name: str, description: str, sections: Dict[str, str], target_env: str = "claude",
+                   has_questions: bool = False, has_templates: bool = False, has_scripts: bool = False,
+                   question_files: list = None, template_files: list = None, script_files: list = None) -> str:
     """
     SKILL.md ファイルの内容を構築
 
@@ -735,6 +897,12 @@ def build_skill_md(skill_name: str, description: str, sections: Dict[str, str], 
         description: 説明文
         sections: スキルセクション（default/guide以外）
         target_env: 対象環境 ("claude" or "codex")
+        has_questions: questions/ディレクトリが存在するか
+        has_templates: templates/ディレクトリが存在するか
+        has_scripts: scripts/ディレクトリが存在するか
+        question_files: questionsファイル名リスト
+        template_files: templatesファイル名リスト
+        script_files: scriptsファイル名リスト
 
     Returns:
         SKILL.md の内容
@@ -755,6 +923,24 @@ def build_skill_md(skill_name: str, description: str, sections: Dict[str, str], 
         lines.append('path_reference: "AGENTS.md"')
     lines.append("")
 
+    # 関連リソースのパス参照を追加
+    if has_questions or has_templates or has_scripts:
+        lines.append("# ======== 関連リソース ========")
+        lines.append("skill_resources:")
+        if has_questions and question_files:
+            lines.append("  questions:")
+            for qf in question_files:
+                lines.append(f'    - "questions/{qf}"')
+        if has_templates and template_files:
+            lines.append("  templates:")
+            for tf in template_files:
+                lines.append(f'    - "templates/{tf}"')
+        if has_scripts and script_files:
+            lines.append("  scripts:")
+            for sf in script_files:
+                lines.append(f'    - "scripts/{sf}"')
+        lines.append("")
+
     # セクション内容（順序を保持）
     for name, content in sections.items():
         if name == "_preamble":
@@ -764,8 +950,32 @@ def build_skill_md(skill_name: str, description: str, sections: Dict[str, str], 
                 lines.append(cleaned_content)
                 lines.append("")
         else:
-            lines.append(content)
-            lines.append("")
+            # YAMLセクション名をキーとして追加
+            # contentがインデントされたYAML値の場合、セクション名: を先頭に付ける
+            content_stripped = content.strip()
+            if content_stripped:
+                # contentが既にセクション名（YAMLキー行）を含んでいるかチェック
+                # コメント行で始まる場合も、中にYAMLキー行があれば既に含まれている
+                yaml_key_pattern = re.compile(rf'^{re.escape(name)}:\s*(\|)?', re.MULTILINE)
+                has_yaml_key = yaml_key_pattern.search(content_stripped)
+
+                if has_yaml_key:
+                    # 既にYAMLキー行を含んでいる → そのまま出力
+                    lines.append(content_stripped)
+                else:
+                    # YAMLキー行がない → セクション名をYAMLキーとして追加
+                    lines.append(f"{name}:")
+                    # インデントを追加（各行に2スペース）
+                    for line in content_stripped.split('\n'):
+                        if line.strip():
+                            # 既存のインデントを維持しつつ、最低2スペースを確保
+                            if line.startswith('  '):
+                                lines.append(line)
+                            else:
+                                lines.append(f"  {line}")
+                        else:
+                            lines.append("")
+                lines.append("")
 
     return "\n".join(lines)
 
@@ -808,15 +1018,14 @@ def build_guide_md(skill_name: str, guide_name: str, content: str) -> str:
 
 def create_skills_from_mdc_v2(project_root: Path, dry_run: bool = False, target_rule: str = None) -> bool:
     """
-    .cursor/rules/*.mdc → .claude/skills/<skill-name>/ 変換（V2: @sectionマーカー対応）
+    .cursor/rules/*.mdc → .claude/skills/<skill-name>/ 変換（V2: YAML形式検出）
                        → .codex/skills/<skill-name>/ 変換
 
     機能:
-    1. # @section マーカーによるセクション抽出
-    2. タイプ別ファイル分割（SKILL.md, QUESTIONS.md, TEMPLATES.md, *_GUIDE.md）
-    3. paths.md の同梱（フロントマター除去）
-    4. 使用スクリプトの検出・同梱・パス書き換え
-    5. .claude/skills と .codex/skills の両方に転記
+    1. YAML形式セクション（xxx_template:, xxx_questions:等）による抽出
+    2. タイプ別ファイル分割（SKILL.md, questions/*.md, templates/*.md）
+    3. 使用スクリプトの検出・同梱
+    4. .claude/skills と .codex/skills の両方に転記
 
     Args:
         project_root: プロジェクトルートパス
@@ -852,7 +1061,7 @@ def create_skills_from_mdc_v2(project_root: Path, dry_run: bool = False, target_
             print(f"❌ 指定ルール '{target_rule}' が見つかりません")
             return False
 
-    print(f"📋 {len(mdc_files)}個の.mdcファイルをスキルへ変換開始（V2: @sectionマーカー対応）")
+    print(f"📋 {len(mdc_files)}個の.mdcファイルをスキルへ変換開始（V2: YAML形式検出）")
     print(f"📁 転記先: {', '.join([name for _, name in skills_dirs])}")
 
     success_count = 0
@@ -935,13 +1144,31 @@ def create_skills_from_mdc_v2(project_root: Path, dry_run: bool = False, target_
                     skill_dir.mkdir(parents=True, exist_ok=True)
 
                 # 1. 参照されているスクリプトをコピー（パス表記は変えない）
+                copied_scripts = []
                 for sec_type in split_result:
                     for sec_name in split_result[sec_type]:
                         copy_referenced_scripts(split_result[sec_type][sec_name], skill_dir)
 
-                # 2. SKILL.md 生成（環境に応じたpath_referenceを設定）
+                # コピーされたスクリプトファイル名を取得
+                scripts_dir_path = skill_dir / "scripts"
+                if scripts_dir_path.exists():
+                    copied_scripts = [f.name for f in scripts_dir_path.glob("*") if f.is_file()]
+
+                # 2. ファイルリストを事前に準備
+                question_files = [f"{q_name}.md" for q_name in split_result["questions"].keys()]
+                template_files = [f"{t_name}.md" for t_name in split_result["template"].keys()]
+
+                # 3. SKILL.md 生成（環境に応じたpath_referenceを設定、リソースパスも追加）
                 target_env = "claude" if "claude" in dir_name else "codex"
-                skill_content = build_skill_md(skill_name, description, split_result["skill"], target_env)
+                skill_content = build_skill_md(
+                    skill_name, description, split_result["skill"], target_env,
+                    has_questions=bool(split_result["questions"]),
+                    has_templates=bool(split_result["template"]),
+                    has_scripts=bool(copied_scripts),
+                    question_files=question_files,
+                    template_files=template_files,
+                    script_files=copied_scripts
+                )
                 skill_file = skill_dir / "SKILL.md"
 
                 if dry_run:
@@ -949,7 +1176,7 @@ def create_skills_from_mdc_v2(project_root: Path, dry_run: bool = False, target_
                 else:
                     skill_file.write_text(skill_content, encoding='utf-8')
 
-                # 3. questions/*.md 生成（質問セクションがあれば、個別ファイルに分割）
+                # 4. questions/*.md 生成（質問セクションがあれば、個別ファイルに分割）
                 if split_result["questions"]:
                     questions_dir = skill_dir / "questions"
                     if not dry_run:
@@ -964,7 +1191,7 @@ def create_skills_from_mdc_v2(project_root: Path, dry_run: bool = False, target_
                         else:
                             q_file.write_text(q_file_content, encoding='utf-8')
 
-                # 4. templates/*.md 生成（テンプレートセクションがあれば、個別ファイルに分割）
+                # 5. templates/*.md 生成（テンプレートセクションがあれば、個別ファイルに分割）
                 if split_result["template"]:
                     templates_dir = skill_dir / "templates"
                     if not dry_run:
@@ -1206,8 +1433,8 @@ def main():
                 print("🤖 [DRY-RUN] エージェントファイル作成予定")
                 conversion_success = True
             
-            # cursor→skills変換 (V2: @sectionマーカー対応)
-            print(f"\n📤 .cursor/rules/*.mdc → .claude/skills/*/SKILL.md 変換開始 (V2: @sectionマーカー対応)")
+            # cursor→skills変換 (V2: YAML形式検出)
+            print(f"\n📤 .cursor/rules/*.mdc → .claude/skills/*/SKILL.md 変換開始 (V2: YAML形式検出)")
             skills_success = create_skills_from_mdc_v2(project_root, args.dry_run)
             if not skills_success:
                 print("⚠️ スキル変換に失敗したか、ファイルがありませんでした")
