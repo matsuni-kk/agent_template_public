@@ -1,0 +1,123 @@
+---
+alwaysApply: true
+description:
+globs:
+---
+# Agent Template
+
+ドメイン特化エージェントを生成するテンプレートベースフレームワーク。
+業界標準準拠・実務即応性・手作り品質を重視。
+
+## 1. コア原則
+
+- 起点Skill確定: ユーザー指定を優先（未指定/曖昧なら質問して確定）
+- WF自動継続: Skill完了後は各Skillの `triggers/next_action_triggers.md` に従い、条件を満たす次Skillを自動実行する
+- テンプレートファースト: 各Skillのassets/を先に読む
+- 品質ループ: Preflight→生成→Subagent QC→反映（最大3回）
+- 推測禁止: 元資料にない項目は「未記載」と明記
+- 自己完結: 成果物に前提/背景/出典/参照を含める
+- 承認優先: フォルダ構成・要件は承認を得てから進む
+
+## 2. 成果物タイプと語調
+
+- ドラフト（Flow）: 作業中成果物。日次階層で管理
+- 確定版（Stock）: 承認済み成果物。programs/配下で管理
+- Skills/Agents/Commands: .claude/配下で管理
+
+## 3. 品質ゴール
+
+- 欠損ゼロ: 参照データの可視情報を漏れなく反映
+- 行間ゼロ: 初見でも前提・背景から理解できる自己完結
+- ハルシネーションゼロ: 元資料にない項目は「未記載/不明」
+
+## 4. Skill運用原則（Next Action Triggers）
+
+- 起点Skillはユーザー指定を優先する（未指定/曖昧なら質問して確定する）。
+- 1つのSkill完了後は、各Skillの `triggers/next_action_triggers.md` に従い、条件を満たす次Skillを自動実行する（WF自動継続）。
+- `## Next Action` は手動の箇条書きではなく、triggers参照（`- triggers: ./triggers/next_action_triggers.md`）のみを許可する。
+- triggersの起動条件は検証可能な形式のみ（曖昧表現NG）。
+- 詳細手順は各Skillのassetsを参照する。
+
+## 5. ワークフロー索引
+
+### Phase 1: Discovery（設計準備）
+agent-discovery → skeleton-generate
+
+### Phase 2: Build（構築）
+domain-skills-generate → subagent-generate → skill-maintenance
+
+### Phase 3: Validation（品質保証）
+rule-validation（validate_skills.py 実行）
+
+### Phase 4: Deploy（デプロイ）
+agent-deploy（GitHubプライベートリポジトリ作成）
+
+### Phase 5: Cleanup（クリーンアップ）
+post-deploy-cleanup（デプロイ後にoutput/とFlow/の一時ファイルを削除）
+
+### Phase 6: Maintenance（継続改善）
+skill-maintenance / subagent-maintenance
+
+### スクリプト
+- `scripts/validate_skills.py`: Skills/Agents/Commands構文検証
+- `scripts/update_agent_master.py`: マスターファイル同期（必ず `--source claude --force` で実行）
+
+## 6. パス辞書
+
+```yaml
+root: "output/{domain}_agent"
+
+dirs:
+  flow: "Flow"
+  stock: "Stock"
+  archived: "Archived"
+  claude_skills: ".claude/skills"
+  claude_agents: ".claude/agents"
+  claude_commands: ".claude/commands"
+  codex_skills: ".codex/skills"
+  codex_agents: ".codex/agents"
+  codex_prompts: ".codex/prompts"
+
+patterns:
+  flow_day_dir: "Flow/{{meta.year_month}}/{{meta.today}}/{{meta.agent_dir}}"
+  draft_requirements: "{{flow_day_dir}}/draft_requirements.md"
+  tasklist: "{{flow_day_dir}}/{{meta.today}}_agent_creation_tasklist.md"
+  rule_check_log: "{{flow_day_dir}}/rule_check_{{meta.today}}.md"
+  stock_documents_dir: "Stock/programs/{{project}}/documents/{{document_genre}}"
+  stock_images_dir: "Stock/programs/{{project}}/images/{{image_category}}"
+
+meta:
+  today: "YYYY-MM-DD"
+  year_month: "YYYYMM"
+  timestamp: "YYYY-MM-DD HH:mm"
+  agent_dir: "{domain}_agent"
+```
+
+## 7. 生成エージェント構造
+
+```
+output/{domain}_agent/
+├── .claude/
+│   ├── skills/          # Skills（1WF=1Skill）
+│   ├── agents/          # Sub Agents（QC用等）
+│   └── commands/        # スラッシュコマンド
+├── .codex/
+│   ├── skills/          # Skills（1WF=1Skill）
+│   ├── agents/          # Sub Agents（QC用等）
+│   └── prompts/         # スラッシュコマンド
+├── Flow/                # 作業中ドラフト
+├── Stock/               # 確定版
+│   └── programs/{project}/
+├── Archived/            # 履歴
+├── scripts/
+└── README.md
+```
+
+## 8. 重要事項
+
+- 業界標準フレームワーク（BABOK、AMA等）に準拠
+- skeleton-generateで骨格生成後、domain-skills-generateでSkills群を作成
+- 詳細手順は各Skills配下のSKILL.md/assets/evaluationを参照
+
+---
+Do what has been asked; nothing more, nothing less.

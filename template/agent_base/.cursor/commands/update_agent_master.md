@@ -6,7 +6,7 @@ Updates agent master files by converting `.mdc` rules to `.md` agents and genera
 ## Execution Command
 
 ```bash
-python3 scripts/update_agent_master.py --force
+python3 scripts/update_agent_master.py --source claude --force
 ```
 
 ## What It Does
@@ -24,7 +24,7 @@ python3 scripts/update_agent_master.py --force
 
 ## Execution Mode
 
-- **Platform**: Cursor (default)
+- **Origin**: Claude (`--source claude`)
 - **Force**: Enabled (overwrites existing files)
 
 ## Notes

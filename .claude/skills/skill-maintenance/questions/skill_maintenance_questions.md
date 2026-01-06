@@ -1,0 +1,33 @@
+# skill-maintenance - skill_maintenance_questions
+
+# ======== 質問 ========
+
+skill_maintenance_questions: |
+  - key: "operation"
+    question: "操作種別（edit／add。デフォルト: edit）"
+  - key: "target_skill"
+    question: "対象Skillフォルダ（既存または作成予定。例: pmbok-agenda）"
+  - key: "new_skill_name"
+    question: "operation=add の場合: Skill名（英小文字+ハイフン。例: new-feature-skill）"
+  - key: "new_skill_description"
+    question: "operation=add の場合: Skill説明（日本語）"
+  - key: "change_scope"
+    question: "変更したいセクション・行・トリガー内容（例: Instructions を最新要件へ更新）"
+  - key: "expected_outcome"
+    question: "適用後にどうなっていてほしいか（成果物／挙動）"
+  - key: "paths_update"
+    question: "paths（master_rules.mdc内のroot/dirs/patterns）を追加／修正する必要がありますか？（入力またはスキップ）（具体的なキー名と値）"
+  - key: "workflow_index_update"
+    question: "CLAUDE.md/AGENTS.md のワークフロー索引を更新しますか？（入力またはスキップ）（yes/no と内容）"
+  - key: "verification_plan"
+    question: "検証手順（レビュー・動作確認・必要なテストなど）"
+  - key: "rollback_plan"
+    question: "差し戻し時の復旧方法・連絡先（入力またはスキップ）"
+  - key: "completion_plan"
+    question: "スケルトンを埋める／既存Skillを更新する具体的な作業手順（誰が・いつ・どこまで）"
+  - key: "reason"
+    question: "変更理由（Why）と根拠資料"
+  - key: "reviewer"
+    question: "レビュー責任者（氏名／ロール）"
+  - key: "due"
+    question: "レビュー期限（YYYY-MM-DD）"
