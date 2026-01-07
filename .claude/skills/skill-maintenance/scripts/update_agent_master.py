@@ -2661,8 +2661,8 @@ def main():
     parser.add_argument(
         '--source',
         choices=['cursor', 'claude', 'codex'],
-        default=None,
-        help='''同期の起点を指定（必須）:
+        default='claude',
+        help='''同期の起点を指定（デフォルト: claude）:
   claude  : .claude/{skills,commands} → .cursor/.codex + マスター波及（CLAUDE.md起点）
   codex   : .codex/{skills,prompts}  → .cursor/.claude + マスター波及（AGENTS.md起点）
   cursor  : .cursor/{skills,commands}→ .claude/.codex + マスター波及（master_rules.mdc起点）''',

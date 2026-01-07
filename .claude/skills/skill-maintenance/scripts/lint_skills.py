@@ -34,7 +34,7 @@ REQUIRED_FRONTMATTER = ["name", "description"]
 REQUIRED_SECTIONS = ["Instructions", "Resources", "Next Action"]
 
 # 必須フォルダ
-REQUIRED_FOLDERS = ["assets", "evaluation", "triggers"]
+REQUIRED_FOLDERS = ["assets", "questions", "evaluation"]
 
 # 環境別のSkillsディレクトリ
 SKILL_DIRS = [".cursor/skills", ".claude/skills", ".codex/skills"]
@@ -250,52 +250,6 @@ def check_resources_references(skill_dir: Path, content: str) -> List[LintError]
     return errors
 
 
-def check_next_action_triggers(skill_dir: Path, content: str) -> List[LintError]:
-    """Next Action triggers の整合性を検証"""
-    errors: List[LintError] = []
-    skill_md = skill_dir / "SKILL.md"
-
-    triggers_file = skill_dir / "triggers" / "next_action_triggers.md"
-    if not triggers_file.exists():
-        errors.append(LintError(
-            str(skill_md), 0,
-            "`triggers/next_action_triggers.md` が存在しません。"
-        ))
-        return errors
-
-    # SKILL.md の Next Action が triggers 参照形式か
-    next_action_match = re.search(
-        r"^##?\s+Next Action\s*\n(.*?)(?=^##?\s+|\Z)",
-        content,
-        re.MULTILINE | re.DOTALL,
-    )
-    if not next_action_match:
-        return errors
-
-    next_action_content = next_action_match.group(1)
-    if "triggers: ./triggers/next_action_triggers.md" not in next_action_content:
-        errors.append(LintError(
-            str(skill_md), 0,
-            "Next Action に `- triggers: ./triggers/next_action_triggers.md` がありません。"
-        ))
-
-    # Resources から triggers が参照されているか（推奨だが必須扱い）
-    resources_match = re.search(
-        r"^##?\s+Resources\s*\n(.*?)(?=^##?\s+|\Z)",
-        content,
-        re.MULTILINE | re.DOTALL,
-    )
-    if resources_match:
-        resources_content = resources_match.group(1)
-        if "triggers: ./triggers/next_action_triggers.md" not in resources_content:
-            errors.append(LintError(
-                str(skill_md), 0,
-                "Resources に `- triggers: ./triggers/next_action_triggers.md` がありません。"
-            ))
-
-    return errors
-
-
 def lint_skill(skill_dir: Path) -> List[LintError]:
     """1つのSkillディレクトリを検証"""
     errors: List[LintError] = []
@@ -324,7 +278,6 @@ def lint_skill(skill_dir: Path) -> List[LintError]:
     errors.extend(check_required_sections(skill_dir, content))
     errors.extend(check_required_folders(skill_dir))
     errors.extend(check_resources_references(skill_dir, content))
-    errors.extend(check_next_action_triggers(skill_dir, content))
 
     return errors
 

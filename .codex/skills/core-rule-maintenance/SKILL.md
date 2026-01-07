@@ -56,24 +56,26 @@ description: "CLAUDE.md/AGENTS.md等のコアルールファイルの保守・�
     - 備考: AGENTS.mdは生成対象だが、Cursor専用の運用ファイルとして扱う（手動で直接編集しない）。
 
 6. QC（必須）:
-   - `./evaluation/evaluation_criteria.md` を参照し、以下を自己評価する:
+   - `recommended_subagents` のQC Subagent（`qa-skill-qc`）に評価・チェックを委譲する。
+   - Subagentは `./evaluation/evaluation_criteria.md` をReadし、QCを実施する。
+   - チェック項目:
      - 必須セクション維持
      - パス辞書の変数参照整合性
      - WF索引とSkillsのNext Action triggers整合性
      - 3環境同期の実施
-   - 評価結果を成果物末尾に追記する（修正有無/理由）。
-   - 重大な問題がある場合は修正し、再評価する（最大3回）。
+   - 指摘を最小差分で反映する（最大3回）。
+   - 指摘に対し「修正した/しない」と理由を成果物に残す。
 
 7. バックログ反映:
    - 次アクション（影響Skillsの更新、レビュー依頼等）を抽出しバックログへ反映する。
    - 反映先・編集制約・差分提示は AGENTS.md / CLAUDE.md の全体ルールに従う。
 
 subagent_policy:
-  - 単なる評価目的のqa-xxxサブエージェントはAgents/に作成しない
-  - 評価は `./evaluation/evaluation_criteria.md` を参照したインライン評価で対応
+  - 品質ループ（QC/チェック/フィードバック）は必ずサブエージェントへ委譲する
+  - サブエージェントの指摘を反映し、反映結果（修正有無/理由）を成果物に残す
 
 recommended_subagents:
-  - skill-validator: 必須セクション維持、WF索引/triggers整合、パス辞書参照の破綻を検査
+  - qa-skill-qc: 必須セクション維持、WF索引/triggers整合、パス辞書参照の破綻を検査
 
 ## Resources
 - questions: ./questions/core_rule_maintenance_questions.md

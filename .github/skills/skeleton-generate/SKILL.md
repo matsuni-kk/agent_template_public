@@ -74,6 +74,7 @@ Skills版エージェント骨格生成ワークフロー。主成果物はoutpu
   # 共通サブエージェント（推奨）
   cp .claude/agents/skill-builder.md output/{domain}_agent/.claude/agents/
   cp .claude/agents/skill-validator.md output/{domain}_agent/.claude/agents/
+  cp .claude/agents/qa-skeleton-generate.md output/{domain}_agent/.claude/agents/
   ```
 
 ### 6. 初期Skills準備

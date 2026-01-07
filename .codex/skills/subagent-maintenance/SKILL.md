@@ -14,8 +14,8 @@ description: "Subagent（{{AGENT_CONFIG_DIR}}/agents/*.md）の作成・更新�
 - Skill経由で実行された場合、そのSkillsは全てSubagent内で実行される
 
 **Agents/に作成不要なもの:**
-- 単なる評価軸チェックのためだけのサブエージェント（`qa-xxx`形式）
-- → これらは `./evaluation/evaluation_criteria.md` を参照したインライン評価で対応
+- 単なる評価軸チェックのためだけの個別 `qa-xxx` サブエージェント
+- → QCは共通Subagent `qa-skill-qc` を使用し、各Skillの `./evaluation/evaluation_criteria.md` に基づいて評価する
 
 ## Instructions
 1. Preflight:
@@ -94,25 +94,26 @@ description: "Subagent（{{AGENT_CONFIG_DIR}}/agents/*.md）の作成・更新�
    - 必要に応じて `./assets/agent_check_report_template.md` 形式で検証ログを作成する。
 
 8. QC（必須）:
-   - `./evaluation/evaluation_criteria.md` を参照し、以下を自己評価する:
+   - `recommended_subagents` のQC Subagent（`qa-skill-qc`）に評価・チェックを委譲する。
+   - Subagentは `./evaluation/evaluation_criteria.md` をReadし、QCを実施する。
+   - チェック項目:
      - フロントマター仕様準拠
      - 必須セクション維持
      - skills整合性（指定Skillが存在するか）
      - Subagent設計原則への適合
-   - 評価結果を成果物末尾に追記する（修正有無/理由）。
-   - 重大な問題がある場合は修正し、再評価する（最大3回）。
+   - 指摘を最小差分で反映する（最大3回）。
+   - 指摘に対し「修正した/しない」と理由を成果物に残す。
 
 9. バックログ反映:
    - 次アクション（3環境同期、レビュー依頼、ロールバック準備等）を抽出しバックログへ反映する。
    - 反映先・編集制約・差分提示は AGENTS.md / CLAUDE.md の全体ルールに従う。
 
 subagent_policy:
-  - Agents/に作成するSubagentは「コンテキスト非依存 + Skill携帯」が条件
-  - 単なる評価目的のqa-xxxサブエージェントはAgents/に作成しない
-  - 評価は `./evaluation/evaluation_criteria.md` を参照したインライン評価で対応
+  - 品質ループ（QC/チェック/フィードバック）は必ずサブエージェントへ委譲する
+  - サブエージェントの指摘を反映し、反映結果（修正有無/理由）を成果物に残す
 
 recommended_subagents:
-  - skill-validator: フロントマター仕様、skills整合、triggers参照の整合を検査
+  - qa-skill-qc: フロントマター仕様、skills整合、triggers参照の整合を検査
 
 ## Resources
 - questions: ./questions/subagent_maintenance_questions.md

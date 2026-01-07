@@ -67,7 +67,7 @@ output/{domain}_agent/.codex/skills/{skill-name}/
   - 必須チェック項目
 
 ### 4. QC（必須）
-- `recommended_subagents` のQC Subagentに評価を委譲する。
+- `recommended_subagents` のQC Subagent（`qa-skill-qc`）に評価を委譲する。
 - Subagentは `./evaluation/domain_skills_criteria.md` をReadし、QCを実施する。
 - チェック項目:
   - 全必須機能がSkillとしてカバーされているか
@@ -93,7 +93,7 @@ subagent_policy:
   - 業界標準フレームワーク調査はSubagentで並列実行可能
 
 recommended_subagents:
-  - qa-domain-skills: Skills網羅性、フォーマット準拠、業界標準反映、依存関係整合を検査
+  - qa-skill-qc: Skills網羅性、フォーマット準拠、業界標準反映、依存関係整合を検査
   - research-framework: 業界標準フレームワークの調査・要約を並列実行
 
 ## Resources

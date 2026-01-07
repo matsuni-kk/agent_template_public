@@ -51,7 +51,7 @@ description: "{Skill説明}。{トリガーキーワード}を依頼されたと
    - `./questions/{name}_questions.md` を使って必要情報を収集し、テンプレ構造を崩さずにドキュメントを作成/更新する。
    - 元資料にない項目は省略せず「未記載」または「不明」と明記する。
 3. QC（必須）:
-   - `recommended_subagents` のQC Subagentに評価・チェックを委譲する。
+   - `recommended_subagents` のQC Subagent（`qa-skill-qc`）に評価・チェックを委譲する。
    - Subagentは最初に `./evaluation/evaluation_criteria.md` をReadし、評価指標に基づいてQCを実施する。
    - 指摘を最小差分で反映する（テンプレの章立ては崩さない）。
    - 再度SubagentでQCする。
@@ -66,7 +66,7 @@ subagent_policy:
   - サブエージェントの指摘を反映し、反映結果（修正有無/理由）を成果物に残す
 
 recommended_subagents:
-  - qa-{skill-name}: {QC観点の説明}
+  - qa-skill-qc: {QC観点の説明}
 
 ## Resources
 - questions: ./questions/{name}_questions.md
