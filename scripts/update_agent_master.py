@@ -2620,7 +2620,11 @@ def _sync_directory(
 
     for target_dir, target_name, target_env in zip(targets, target_names, target_envs):
         try:
-            # ターゲットディレクトリを作成
+            # ターゲットディレクトリを完全リフレッシュ（既存を削除してから作成）
+            if target_dir.exists():
+                import shutil
+                shutil.rmtree(target_dir)
+                print(f"    🧹 {target_name} をリフレッシュ")
             target_dir.mkdir(parents=True, exist_ok=True)
 
             # ソースからターゲットへコピー（パス参照を変換）
@@ -2661,8 +2665,8 @@ def main():
     parser.add_argument(
         '--source',
         choices=['cursor', 'claude', 'codex'],
-        default=None,
-        help='''同期の起点を指定（必須）:
+        default='claude',
+        help='''同期の起点を指定（デフォルト: claude）:
   claude  : .claude/{skills,commands} → .cursor/.codex + マスター波及（CLAUDE.md起点）
   codex   : .codex/{skills,prompts}  → .cursor/.claude + マスター波及（AGENTS.md起点）
   cursor  : .cursor/{skills,commands}→ .claude/.codex + マスター波及（master_rules.mdc起点）''',
