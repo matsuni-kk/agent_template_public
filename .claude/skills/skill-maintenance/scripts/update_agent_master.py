@@ -2620,7 +2620,11 @@ def _sync_directory(
 
     for target_dir, target_name, target_env in zip(targets, target_names, target_envs):
         try:
-            # ターゲットディレクトリを作成
+            # ターゲットディレクトリを完全リフレッシュ（既存を削除してから作成）
+            if target_dir.exists():
+                import shutil
+                shutil.rmtree(target_dir)
+                print(f"    🧹 {target_name} をリフレッシュ")
             target_dir.mkdir(parents=True, exist_ok=True)
 
             # ソースからターゲットへコピー（パス参照を変換）

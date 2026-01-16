@@ -29,7 +29,7 @@ description: "{処理内容の説明}。「{トリガーワード1}」「{トリ
 - 元資料にない項目は省略せず「未記載」と明記する。
 
 ### 3. QC（必須）
-- `recommended_subagents` のQC Subagentに評価を委譲する。
+- `recommended_subagents` のQC Subagent（`qa-skill-qc`）に評価を委譲する。
 - Subagentは `./evaluation/{criteria_file}.md` をReadし、QCを実施する。
 - 指摘を最小差分で反映する（最大3回）。
 - 指摘に対し「修正した/しない」と理由を成果物に残す。
@@ -44,7 +44,7 @@ subagent_policy:
   - サブエージェントの指摘を反映し、反映結果（修正有無/理由）を成果物に残す
 
 recommended_subagents:
-  - qa-{skill_name}: {QC観点の説明}
+  - qa-skill-qc: {QC観点の説明}
 
 ## Resources
 - assets: ./assets/{checklist_file}.md

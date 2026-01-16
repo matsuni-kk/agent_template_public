@@ -95,24 +95,23 @@ description: "Skill（SKILL.md）の保守・更新・新規作成を対話で�
 7. 検証:
    - 必要に応じて `./assets/skill_check_report_template.md` 形式で検証ログを作成する。
 8. QC（必須）:
-   - `recommended_subagents` のQC Subagent（`qa-skill-qc`）に評価・チェックを委譲する。
-   - Subagentは `./evaluation/evaluation_criteria.md` をReadし、QCを実施する。
-   - チェック項目:
+   - 共通QC Subagent（`qa-skill-qc`）に評価・チェックを委譲する。
+   - `qa-skill-qc` は最初に `./evaluation/evaluation_criteria.md` をReadし、以下の観点を中心にQCを実施する:
      - 必須セクション維持
      - 機能欠損がないか
      - 差分最小
      - 検証手順の不足
      - triggers/next_action_triggers.md が作成されているか
      - 起動条件が検証可能な形式か
-   - 指摘を最小差分で反映する（最大3回）。
-   - 指摘に対し「修正した/しない」と理由を成果物に残す。
+   - 評価結果を成果物末尾に追記する（修正有無/理由）。
+   - 重大な問題がある場合は修正し、再度 `qa-skill-qc` でQCする（最大3回）。
 9. バックログ反映:
    - 次アクション（3環境同期、レビュー依頼、ロールバック準備等）を抽出しバックログへ反映する。
    - 反映先・編集制約・差分提示は AGENTS.md / CLAUDE.md の全体ルールに従う。
 
 subagent_policy:
-  - 品質ループ（QC/チェック/フィードバック）は必ずサブエージェントへ委譲する
-  - サブエージェントの指摘を反映し、反映結果（修正有無/理由）を成果物に残す
+  - 単なる評価目的のためだけの個別 `qa-xxx` サブエージェントは Agents/ に作成しない
+  - QCは共通Subagent `qa-skill-qc` を使用し、各Skillの `./evaluation/evaluation_criteria.md` に基づいて評価する
   - Subagentが必要なSkillは subagent-maintenance で作成し、skills: フィールドで連携
 
 recommended_subagents:

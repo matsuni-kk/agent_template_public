@@ -35,7 +35,7 @@ description: "新規エージェント作成のためのヒアリング・要件
 - **承認が得られない場合は後続工程へ進まない。**
 
 ### 4. QC（必須）
-- `recommended_subagents` のQC Subagentに評価を委譲する。
+- `recommended_subagents` のQC Subagent（`qa-skill-qc`）に評価を委譲する。
 - Subagentは `./evaluation/discovery_criteria.md` をReadし、QCを実施する。
 - 指摘を最小差分で反映する（最大3回）。
 - 指摘に対し「修正した/しない」と理由を成果物に残す。
@@ -50,7 +50,7 @@ subagent_policy:
   - サブエージェントの指摘を反映し、反映結果（修正有無/理由）を成果物に残す
 
 recommended_subagents:
-  - qa-agent-discovery: 必須項目網羅、曖昧表現、推測混入、業界標準整合、承認確認を検査
+  - qa-skill-qc: 必須項目網羅、曖昧表現、推測混入、業界標準整合、承認確認を検査
 
 ## Resources
 - questions: ./questions/discovery_questions.md

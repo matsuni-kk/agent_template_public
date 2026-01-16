@@ -61,7 +61,7 @@ description: "生成したエージェントをGitHubプライベートリポジ
 - リポジトリURLを記録する。
 
 ### 6. QC（必須）
-- `recommended_subagents` のQC Subagentに評価を委譲する。
+- `recommended_subagents` のQC Subagent（`qa-skill-qc`）に評価を委譲する。
 - Subagentは `./evaluation/deploy_criteria.md` をReadし、QCを実施する。
 - 指摘を最小差分で反映する（最大3回）。
 
@@ -79,7 +79,7 @@ subagent_policy:
   - サブエージェントの指摘を反映し、反映結果（修正有無/理由）を成果物に残す
 
 recommended_subagents:
-  - qa-agent-deploy: 必須ファイル存在、マルチプラットフォーム同期、リポジトリ作成を検査
+  - qa-skill-qc: 必須ファイル存在、マルチプラットフォーム同期、リポジトリ作成を検査
 
 ## Resources
 - assets: ./assets/deploy_checklist.md

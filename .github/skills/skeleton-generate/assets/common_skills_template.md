@@ -36,9 +36,11 @@ cp scripts/update_agent_master.py output/{domain}_agent/scripts/
 
 ### Step 3: 共通サブエージェントコピー（オプション）
 ```bash
-# skill-builder, skill-validator
+# skill-builder, skill-validator, qa-skill-qc
 cp .claude/agents/skill-builder.md output/{domain}_agent/.claude/agents/
 cp .claude/agents/skill-validator.md output/{domain}_agent/.claude/agents/
+cp .claude/agents/qa-skill-qc.md output/{domain}_agent/.claude/agents/
+cp .codex/agents/qa-skill-qc.md output/{domain}_agent/.codex/agents/
 ```
 
 ## skill-maintenance の調整ポイント
@@ -90,6 +92,8 @@ cp scripts/update_agent_master.py "${OUTPUT_DIR}/scripts/"
 # 共通サブエージェント
 cp .claude/agents/skill-builder.md "${OUTPUT_DIR}/.claude/agents/"
 cp .claude/agents/skill-validator.md "${OUTPUT_DIR}/.claude/agents/"
+cp .claude/agents/qa-skill-qc.md "${OUTPUT_DIR}/.claude/agents/"
+cp .codex/agents/qa-skill-qc.md "${OUTPUT_DIR}/.codex/agents/"
 
 echo "✅ 共通Skills コピー完了: ${OUTPUT_DIR}"
 ```

@@ -62,20 +62,25 @@ find Flow/ -type d -empty -delete 2>/dev/null || true
 - `Flow/` に関連ファイルが存在しないこと
 
 ### 6. QC（必須）
-- `./evaluation/cleanup_criteria.md` を参照し、以下を確認する:
+- `recommended_subagents` のQC Subagent（`qa-skill-qc`）に評価を委譲する。
+- Subagentは `./evaluation/cleanup_criteria.md` をReadし、QCを実施する。
+- チェック項目:
   - ユーザー許可が取得されている
   - 削除対象が指定どおり
   - 想定外の削除が発生していない
+- 指摘を最小差分で反映する（最大3回）。
+- 指摘に対し「修正した/しない」と理由を成果物に残す。
 
 ### 7. バックログ反映
 - 削除完了をタスクリストに記録する。
 - cleanup_done=true を記録する。
 
 subagent_policy:
-  - このSkillはサブエージェント委譲不要（単純な削除操作のため）
+  - 品質ループ（QC/チェック/フィードバック）は必ずサブエージェントへ委譲する
+  - サブエージェントの指摘を反映し、反映結果（修正有無/理由）を成果物に残す
 
 recommended_subagents:
-  - なし（evaluation/*.mdで十分）
+  - qa-skill-qc: ユーザー許可、削除対象の妥当性、想定外削除の有無を検査
 
 ## Resources
 - assets: ./assets/cleanup_checklist.md

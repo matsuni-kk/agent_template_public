@@ -128,7 +128,7 @@ tools: [Read, Grep, Glob, WebSearch, WebFetch]  # 必要なツール
 - 携帯Skills: チェック対象のSkills
 
 ### 6. QC（必須）
-- `recommended_subagents` のQC Subagentに評価を委譲する。
+- `recommended_subagents` のQC Subagent（`qa-skill-qc`）に評価を委譲する。
 - Subagentは `./evaluation/subagent_criteria.md` をReadし、QCを実施する。
 - チェック項目:
   - サブエージェント化判定が適切か
@@ -147,7 +147,7 @@ subagent_policy:
   - サブエージェントの指摘を反映し、反映結果（修正有無/理由）を成果物に残す
 
 recommended_subagents:
-  - qa-subagent-design: サブエージェント化判定、携帯Skills設定、入出力定義を検査
+  - qa-skill-qc: サブエージェント化判定、携帯Skills設定、入出力定義を検査
 
 ## Resources
 - assets: ./assets/subagent_design_guide.md

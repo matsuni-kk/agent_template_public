@@ -74,6 +74,8 @@ Skills版エージェント骨格生成ワークフロー。主成果物はoutpu
   # 共通サブエージェント（推奨）
   cp .claude/agents/skill-builder.md output/{domain}_agent/.claude/agents/
   cp .claude/agents/skill-validator.md output/{domain}_agent/.claude/agents/
+  cp .claude/agents/qa-skill-qc.md output/{domain}_agent/.claude/agents/
+  cp .codex/agents/qa-skill-qc.md output/{domain}_agent/.codex/agents/
   cp .claude/agents/qa-skeleton-generate.md output/{domain}_agent/.claude/agents/
   ```
 
@@ -82,7 +84,7 @@ Skills版エージェント骨格生成ワークフロー。主成果物はoutpu
 - ドメイン固有のSkillsは次工程で作成。
 
 ### 7. QC（必須）
-- `recommended_subagents` のQC Subagentに評価を委譲する。
+- `recommended_subagents` のQC Subagent（`qa-skill-qc`）に評価を委譲する。
 - Subagentは `./evaluation/skeleton_criteria.md` をReadし、QCを実施する。
 - 指摘を最小差分で反映する（最大3回）。
 - 指摘に対し「修正した/しない」と理由を成果物に残す。
@@ -96,7 +98,7 @@ subagent_policy:
   - サブエージェントの指摘を反映し、反映結果（修正有無/理由）を成果物に残す
 
 recommended_subagents:
-  - qa-skeleton-generate: ディレクトリ構造、CLAUDE.md、マルチプラットフォームファイル、スクリプト配置を検査
+  - qa-skill-qc: ディレクトリ構造、CLAUDE.md、マルチプラットフォームファイル、スクリプト配置を検査
 
 ## Resources
 - assets: ./assets/generate_checklist.md
